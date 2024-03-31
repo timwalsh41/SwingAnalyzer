@@ -1,0 +1,1 @@
+Handle different video aspect ratios gracefully
