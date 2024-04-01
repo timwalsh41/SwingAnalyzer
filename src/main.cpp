@@ -1,4 +1,4 @@
-#include <VideoWindow.h>
+#include <AnalyzerWindow.h>
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
     }
 
     Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "org.gtkmm.example", Gio::APPLICATION_HANDLES_COMMAND_LINE);
-    VideoWindow window(argv[1]);
+    AnalyzerWindow window(argv[1]);
 
     app->signal_command_line().connect([&app, &window](const Glib::RefPtr<Gio::ApplicationCommandLine>&) -> int {
         app->add_window(window);

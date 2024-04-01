@@ -1,0 +1,30 @@
+VideoWindow is the top level class, this takes in the Gtk::Builder which has references to all of the UI elements/controls
+- RENAME THIS CLASS
+- Create the VideoPlayer object
+- Create the annotation builder and annotations container
+Video
+- VideoChannel class is responsible for storing/playing a single channel of Video
+    - It has the OpenCV objects for the video itself and to consume a frame
+    - To play video, spin up a thread to update the canvas at the scaled frame rate
+        - Continue until we run out of frames, or until we clear the member variable continue flag
+            - Clear flag if user pauses, or changes the playback speed setting, or maybe others
+    - Main API
+        - Load new video file
+        - Unload video
+        - Step forward one frame
+        - Set frame index
+        - Retrieve frame as a pixel buffer
+- VideoPlayer class handles synchronizing and playing the left and right channels
+    - Maintain an offset between the two
+    - Handle stepping/playing as a function of which videos are selected and whether sync mode is active
+    - Retrieve the pixel buffers from each channel, apply the annotations, and write to the DrawingArea
+        - Gets a pointer to the annotations container to use for building
+- Annotations
+    - Needs design work -> LOOK INTO GOOCANVAS
+        - How do we represent the different annotation types for rendering with Cairo
+        - This will dictate the class hierarchy
+        - How do we handle selecting, moving, and resizing?
+    - Create an annotation builder base class, and then subclass for the individual builders (polyline, ellipse, freehand)
+    - Have an annotation build manager that receives the button press events to activate the appropriate builder tool
+    - Link the mousedown/mouseup events for the DrawingArea itself rather than a higher level element
+        - This way there's no confusion about which one is running

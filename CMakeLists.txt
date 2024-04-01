@@ -6,19 +6,22 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(PkgConfig)
 pkg_check_modules(GTKMM gtkmm-3.0)
+pkg_check_modules(GOOCANVASMM goocanvasmm-2.0)
 
 find_package(OpenCV REQUIRED)
 
 link_directories(
-        ${GTKMM_LIBRARY_DIRS} 
+        ${GTKMM_LIBRARY_DIRS}
+        ${GOOCANVASMM_LIBRARY_DIRS}
 )
 
 include_directories(
-        ${GTKMM_INCLUDE_DIRS} 
+        ${GTKMM_INCLUDE_DIRS}
+        ${GOOCANVASMM_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
         inc
 )
 
-add_executable(gtk_gstreamer_test src/main.cpp src/VideoWindow.cpp)
+add_executable(gtk_gstreamer_test src/main.cpp src/AnalyzerWindow.cpp)
 
-target_link_libraries(gtk_gstreamer_test ${GTKMM_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(gtk_gstreamer_test ${GTKMM_LIBRARIES} ${GOOCANVASMM_LIBRARIES} ${OpenCV_LIBS})

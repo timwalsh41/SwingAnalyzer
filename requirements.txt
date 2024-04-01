@@ -1,1 +1,15 @@
+Display two videos side by side in a single window
+Load videos via dialog box
+Allow independent scrolling of each video to synchronize them and define an offset to match up
+Allow for synchronized playback using that offset
 Handle different video aspect ratios gracefully
+Draw annotations on either video
+- Polyline
+- Ellipse
+- Freehand
+User can select and delete, move or resize annotations
+Clear all annotations
+Play/pause control
+Playback speed adjustment
+Keyboard shortcuts (play/pause, step forward/backward one frame)
+Save configuration (video files, synchronization offset, annotations)
