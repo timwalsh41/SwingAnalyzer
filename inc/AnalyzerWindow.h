@@ -17,12 +17,9 @@ struct window_decoration_size {
 class AnalyzerWindow : public Gtk::Window {
 public:
     AnalyzerWindow(const std::string& videoPath);
-    bool redraw_frame(const Cairo::RefPtr<Cairo::Context>& cr);
 
 private:
     Goocanvas::Canvas* m_canvas;
-    Gtk::Fixed m_fixedContainer;
-    Gtk::DrawingArea m_drawingArea;
     cv::VideoCapture m_videoCapture;
     cv::Mat m_Frame{};
     Glib::RefPtr<Goocanvas::Image> m_image;
@@ -38,6 +35,7 @@ private:
 
     window_decoration_size get_window_decoration_size();
     void playVideoWorkerThread();
+    void SetVideoSize();
 };
 
 #endif // ANALYZERWINDOW_H
