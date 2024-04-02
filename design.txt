@@ -1,5 +1,4 @@
-VideoWindow is the top level class, this takes in the Gtk::Builder which has references to all of the UI elements/controls
-- RENAME THIS CLASS
+AnalyzerWindow is the top level class, this takes in the Gtk::Builder which has references to all of the UI elements/controls
 - Create the VideoPlayer object
 - Create the annotation builder and annotations container
 Video

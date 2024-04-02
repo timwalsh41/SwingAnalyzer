@@ -43,6 +43,12 @@ AnalyzerWindow::AnalyzerWindow(const std::string& videoPath)
     m_pixbuf = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 1, 1);
     m_image = Goocanvas::Image::create(m_pixbuf, 0, 0);
     m_canvas->get_root_item()->add_child(m_image);
+
+    // add a rectangle for test purpose
+    auto rect = Goocanvas::Rect::create(250,400,100,100);
+    rect->property_stroke_color() = "red";
+    rect->property_line_width() = 6;
+    m_canvas->get_root_item()->add_child(rect);
     m_canvas->show();
 
     // our dispatcher will trigger the update of the canvas image pixbuf
@@ -60,6 +66,8 @@ AnalyzerWindow::AnalyzerWindow(const std::string& videoPath)
     // start our worker thread to process the video frames
     std::thread workerThread(&AnalyzerWindow::playVideoWorkerThread, this);
     workerThread.detach();
+
+    show_all();
 }
 
 void AnalyzerWindow::playVideoWorkerThread()
@@ -110,7 +118,6 @@ void AnalyzerWindow::SetVideoSize()
                 m_videoHeight = m_windowHeight-padding;
             }
 
-            // m_drawingArea.set_size_request(m_videoWidth, m_videoHeight);
             m_canvas->set_size_request(m_videoWidth, m_videoHeight);
 
             std::cout << "Window size: " << m_windowWidth << "x" << m_windowHeight << "\n";
