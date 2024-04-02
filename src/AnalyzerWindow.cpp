@@ -4,11 +4,12 @@
 /* 
 TODO:
 [ ] Use clang-format to apply consistent style
+[ ] Window sizing based on getting allocation is not working properly
 */
 
 
-AnalyzerWindow::AnalyzerWindow(const std::string& videoPath)
-     : m_videoCapture(videoPath), m_Fps(m_videoCapture.get(cv::CAP_PROP_FPS))
+AnalyzerWindow::AnalyzerWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& pBuilder, const std::string& videoPath)
+     : Gtk::Window(cobject), m_builder(pBuilder), m_videoCapture(videoPath), m_Fps(m_videoCapture.get(cv::CAP_PROP_FPS))
 {
     if (!m_videoCapture.isOpened()) {
         throw std::runtime_error("Failed to open video file");
@@ -20,8 +21,8 @@ AnalyzerWindow::AnalyzerWindow(const std::string& videoPath)
         std::cout << "Total frames: " << m_videoCapture.get(cv::CAP_PROP_FRAME_COUNT) << "\n";
     }
     
-    m_windowWidth = 1200;
-    m_windowHeight = 800;
+    m_windowWidth = 1600;
+    m_windowHeight = 1200;
 
     set_default_size(m_windowWidth, m_windowHeight);
     set_title("Video drawing test");
@@ -37,7 +38,17 @@ AnalyzerWindow::AnalyzerWindow(const std::string& videoPath)
     */
 
     m_canvas = Gtk::manage(new Goocanvas::Canvas());
-    add(*m_canvas);
+    Gtk::Box* pLeftVideoBox = nullptr;
+    m_builder->get_widget("LeftVideoBox", pLeftVideoBox);
+    if (pLeftVideoBox)
+    {
+        pLeftVideoBox->add(*m_canvas);
+        pLeftVideoBox->reorder_child(*m_canvas, 0);
+    }
+    else
+    {
+        throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find LeftVideoBox");
+    }
 
     // initialize the canvas with a blank image
     m_pixbuf = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 1, 1);
@@ -61,7 +72,6 @@ AnalyzerWindow::AnalyzerWindow(const std::string& videoPath)
 
     // load the first frame
     m_videoCapture >> m_Frame;
-    SetVideoSize();
 
     // start our worker thread to process the video frames
     std::thread workerThread(&AnalyzerWindow::playVideoWorkerThread, this);
@@ -74,6 +84,8 @@ void AnalyzerWindow::playVideoWorkerThread()
 {
     while (!m_Frame.empty())
     {
+        SetVideoSize();
+
         cv::Mat resized_frame;
         cv::resize(m_Frame, resized_frame, cv::Size(m_videoWidth, m_videoHeight));
 
@@ -99,32 +111,59 @@ void AnalyzerWindow::SetVideoSize()
 {
     if (!m_Frame.empty()) 
     {
-        if (m_videoAspectRatio == 0) 
+        // set up video size - note this will not support window resizing
+        m_videoAspectRatio = static_cast<double>(m_Frame.cols) /
+            static_cast<double>(m_Frame.rows);
+
+        Gtk::Box* pLeftButtonBox = nullptr;
+        m_builder->get_widget("LeftVideoButtonBox", pLeftButtonBox);
+        if (!pLeftButtonBox)
         {
-            // set up video size - note this will not support window resizing
-            m_videoAspectRatio = static_cast<double>(m_Frame.cols) /
-                static_cast<double>(m_Frame.rows);
-
-            int padding = 200;
-
-            if (m_windowWidth / m_videoAspectRatio <= m_windowHeight) 
-            {
-                m_videoWidth = m_windowWidth-padding;
-                m_videoHeight = (m_windowWidth-padding) / m_videoAspectRatio;
-            } 
-            else 
-            {
-                m_videoWidth = (m_windowHeight-padding) * m_videoAspectRatio;
-                m_videoHeight = m_windowHeight-padding;
-            }
-
-            m_canvas->set_size_request(m_videoWidth, m_videoHeight);
-
-            std::cout << "Window size: " << m_windowWidth << "x" << m_windowHeight << "\n";
-            std::cout << "Video size: " << m_videoWidth << "x" << m_videoHeight << "\n";
-            std::cout << "Video aspect ratio: " << m_videoAspectRatio << "\n";
+            throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find LeftVideoButtonBox");
         }
+
+        Gtk::Box* pLeftVideoBox = nullptr;
+        m_builder->get_widget("LeftVideoBox", pLeftVideoBox);
+        if (!pLeftVideoBox)
+        {
+                throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find LeftVideoBox");
+        }
+        
+        Gtk::Allocation leftVideoBoxAllocation = pLeftVideoBox->get_allocation();
+        Gtk::Allocation leftButtonBoxAllocation = pLeftButtonBox->get_allocation();
+        
+        int availableHeight = leftVideoBoxAllocation.get_height() - leftButtonBoxAllocation.get_height();
+        int availableWidth = leftVideoBoxAllocation.get_width();
+
+        if (availableHeight == 0 || availableWidth == 0)
+        {
+            availableHeight = 0.8*m_windowHeight;
+            availableWidth = 0.8*m_windowWidth;
+        }
+        
+        if (availableWidth / m_videoAspectRatio <= availableHeight) 
+        {
+            m_videoWidth = availableWidth;
+            m_videoHeight = availableWidth / m_videoAspectRatio;
+        } 
+        else 
+        {
+            m_videoHeight = availableHeight;
+            m_videoWidth = availableHeight * m_videoAspectRatio;
+        }
+
+        m_canvas->set_size_request(m_videoWidth, m_videoHeight);
+
+        std::cout << "Window size: " << m_windowWidth << "x" << m_windowHeight << "\n";
+        std::cout << "Video size: " << m_videoWidth << "x" << m_videoHeight << "\n";
+        std::cout << "Video aspect ratio: " << m_videoAspectRatio << "\n";
     }
+}
+
+void AnalyzerWindow::on_realize()
+{
+    Gtk::Window::on_realize();
+    SetVideoSize();    
 }
 
 window_decoration_size AnalyzerWindow::get_window_decoration_size()

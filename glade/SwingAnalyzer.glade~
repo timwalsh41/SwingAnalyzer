@@ -2,8 +2,9 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
-  <object class="GtkWindow">
+  <object class="GtkWindow" id="MainWindow">
     <property name="can-focus">False</property>
+    <property name="title" translatable="yes">SwingAnalyzer</property>
     <child>
       <object class="GtkBox" id="TopLevelBox">
         <property name="visible">True</property>
@@ -14,7 +15,7 @@
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
-              <object class="GtkBox" id="RightVideoBox">
+              <object class="GtkBox" id="LeftVideoBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
@@ -22,11 +23,11 @@
                   <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkBox" id="RightVideoButtonBox">
+                  <object class="GtkBox" id="LeftideoButtonBox">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
-                      <object class="GtkButton" id="BtnLoadLef">
+                      <object class="GtkButton" id="BtnLoadLeft">
                         <property name="label" translatable="yes">Load</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
@@ -80,7 +81,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkBox" id="LeftVideoBox">
+              <object class="GtkBox" id="RightVideoBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
@@ -88,7 +89,7 @@
                   <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkBox" id="LeftVideoButtonBox">
+                  <object class="GtkBox" id="RightVideoButtonBox">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>

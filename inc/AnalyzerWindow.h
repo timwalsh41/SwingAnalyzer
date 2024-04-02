@@ -16,9 +16,10 @@ struct window_decoration_size {
 
 class AnalyzerWindow : public Gtk::Window {
 public:
-    AnalyzerWindow(const std::string& videoPath);
+    AnalyzerWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& pBuilder, const std::string& videoPath);
 
 private:
+    Glib::RefPtr<Gtk::Builder> m_builder;
     Goocanvas::Canvas* m_canvas;
     cv::VideoCapture m_videoCapture;
     cv::Mat m_Frame{};
@@ -33,6 +34,7 @@ private:
     float m_videoWidth{0}, m_videoHeight{0};
     float m_videoAspectRatio{0};
 
+    void on_realize() override;
     window_decoration_size get_window_decoration_size();
     void playVideoWorkerThread();
     void SetVideoSize();
