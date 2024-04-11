@@ -3,6 +3,7 @@ Load videos via dialog box
 Allow independent scrolling of each video to synchronize them and define an offset to match up
 Allow for synchronized playback using that offset
 Handle different video aspect ratios gracefully
+Handle different video framerates
 Handle window resizing gracefully
 Draw annotations on either video
 - Polyline
@@ -12,5 +13,11 @@ User can select and delete, move or resize(?) annotations
 Clear all annotations
 Play/pause control
 Playback speed adjustment
-Keyboard shortcuts (play/pause, step forward/backward one frame, delete annotation)
+Keyboard shortcuts (play/pause, step forward/backward one frame or five frames, delete annotation)
+
+Optional/future:
 Save configuration (video files, synchronization offset, annotations)
+Open video from URL
+Pull videos from Google Photos and store locally
+Maintain local video library when downloading
+Individual step controls for each channel for syncing

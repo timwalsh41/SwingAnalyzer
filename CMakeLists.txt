@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
-project(gtk_gstreamer_test)
+project(swing_analyzer)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set(CMAKE_BUILD_TYPE Debug)
 
 find_package(PkgConfig)
@@ -22,6 +23,6 @@ include_directories(
         inc
 )
 
-add_executable(gtk_gstreamer_test src/main.cpp src/AnalyzerWindow.cpp)
+add_executable(swing_analyzer src/main.cpp src/AnalyzerWindow.cpp src/Analyzer.cpp src/Logger.cpp)
 
-target_link_libraries(gtk_gstreamer_test ${GTKMM_LIBRARIES} ${GOOCANVASMM_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(swing_analyzer ${GTKMM_LIBRARIES} ${GOOCANVASMM_LIBRARIES} ${OpenCV_LIBS})

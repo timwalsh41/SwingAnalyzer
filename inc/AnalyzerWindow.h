@@ -1,26 +1,28 @@
 #ifndef ANALYZERWINDOW_H
 #define ANALYZERWINDOW_H
 
-#include <gtkmm.h>
-#include <opencv2/opencv.hpp>
-#include <goocanvasmm.h>
 #include <cairomm/context.h>
 #include <glibmm/main.h>
+#include <goocanvasmm.h>
+#include <gtkmm.h>
 #include <iostream>
 #include <memory>
+#include <opencv2/opencv.hpp>
 
-struct window_decoration_size {
+struct WindowDecorationSize
+{
     int title_bar_height;
     int border_width;
 };
 
-class AnalyzerWindow : public Gtk::Window {
-public:
-    AnalyzerWindow(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& pBuilder, const std::string& videoPath);
+class AnalyzerWindow : public Gtk::Window
+{
+  public:
+    AnalyzerWindow(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &pBuilder, const std::string &videoPath);
 
-private:
+  private:
     Glib::RefPtr<Gtk::Builder> m_builder;
-    Goocanvas::Canvas* m_canvas;
+    Goocanvas::Canvas *m_canvas;
     cv::VideoCapture m_videoCapture;
     cv::Mat m_Frame{};
     Glib::RefPtr<Goocanvas::Image> m_image;
@@ -35,9 +37,9 @@ private:
     float m_videoAspectRatio{0};
 
     void on_realize() override;
-    window_decoration_size get_window_decoration_size();
+    WindowDecorationSize getWindowDecorationSize();
     void playVideoWorkerThread();
-    void SetVideoSize();
+    void setVideoSize();
 };
 
 #endif // ANALYZERWINDOW_H

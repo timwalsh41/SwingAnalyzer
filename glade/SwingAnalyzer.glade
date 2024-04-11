@@ -23,6 +23,80 @@
                   <placeholder/>
                 </child>
                 <child>
+                  <object class="GtkBox" id="LeftVideoControlBox">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <child>
+                      <object class="GtkButton" id="BtnBack5FramesLeft">
+                        <property name="label" translatable="yes">&lt;&lt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="BtnBack1FrameLeft">
+                        <property name="label" translatable="yes">&lt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkScrollbar" id="ScrollVideoLeft">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="BtnForward1FrameLeft">
+                        <property name="label" translatable="yes">&gt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="BtnForward5FramesLeft">
+                        <property name="label" translatable="yes">&gt;&gt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">4</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
                   <object class="GtkBox" id="LeftVideoButtonBox">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
@@ -53,12 +127,10 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkCheckButton" id="SelectLeft">
-                        <property name="label" translatable="yes">No file loaded</property>
+                      <object class="GtkLabel" id="LblVideoFileLeft">
                         <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="draw-indicator">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">No file loaded</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -70,7 +142,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">1</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
               </object>
@@ -87,6 +159,80 @@
                 <property name="orientation">vertical</property>
                 <child>
                   <placeholder/>
+                </child>
+                <child>
+                  <object class="GtkBox" id="RightVideoControlBox">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <child>
+                      <object class="GtkButton" id="BtnBack5FramesRight">
+                        <property name="label" translatable="yes">&lt;&lt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="BtnBack1FrameRight">
+                        <property name="label" translatable="yes">&lt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkScrollbar">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="BtnForward1FrameRight">
+                        <property name="label" translatable="yes">&gt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="BtnForward5FramesRight">
+                        <property name="label" translatable="yes">&gt;&gt;</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">4</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
                 </child>
                 <child>
                   <object class="GtkBox" id="RightVideoButtonBox">
@@ -119,12 +265,10 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkCheckButton" id="SelectRight">
-                        <property name="label" translatable="yes">No file loaded</property>
+                      <object class="GtkLabel" id="LblVideoFileRight">
                         <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="draw-indicator">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">No file loaded</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -136,7 +280,7 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">1</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
               </object>
@@ -155,7 +299,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkScrollbar">
+          <object class="GtkScrollbar" id="ScrollVideoMain">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
