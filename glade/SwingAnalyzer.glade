@@ -58,7 +58,7 @@
                         <property name="can-focus">False</property>
                       </object>
                       <packing>
-                        <property name="expand">False</property>
+                        <property name="expand">True</property>
                         <property name="fill">True</property>
                         <property name="position">2</property>
                       </packing>
@@ -314,8 +314,8 @@
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
-              <object class="GtkButton" id="BtnPlay">
-                <property name="label" translatable="yes">Play</property>
+              <object class="GtkButton" id="BtnGoToStart">
+                <property name="label" translatable="yes">|&lt;</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
@@ -327,13 +327,11 @@
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton" id="SelectSyncVideo">
-                <property name="label" translatable="yes">Sync video mode</property>
+              <object class="GtkButton" id="BtnPlay">
+                <property name="label" translatable="yes">Play</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="receives-default">False</property>
-                <property name="active">True</property>
-                <property name="draw-indicator">True</property>
+                <property name="receives-default">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -431,6 +429,21 @@
               </packing>
             </child>
             <child>
+              <object class="GtkCheckButton" id="SelectSyncVideo">
+                <property name="label" translatable="yes">Sync video mode</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
+                <property name="active">True</property>
+                <property name="draw-indicator">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">9</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkButton" id="BtnHelp">
                 <property name="label" translatable="yes">Help</property>
                 <property name="visible">True</property>
@@ -440,7 +453,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">9</property>
+                <property name="position">10</property>
               </packing>
             </child>
           </object>
