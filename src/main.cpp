@@ -6,7 +6,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "org.gtkmm.example", Gio::APPLICATION_HANDLES_COMMAND_LINE);
+    Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "swing.analyzer", Gio::APPLICATION_HANDLES_COMMAND_LINE);
     Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
 
     try

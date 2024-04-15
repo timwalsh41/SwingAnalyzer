@@ -79,6 +79,8 @@
         "-I/usr/include/gtkmm-3.0",
         "-I/usr/include/cairo",
         "-I/usr/include/cairomm-1.0",
-        "-I/usr/include/c++/11"
+        "-I/usr/include/c++/11",
+        "-I/usr/include/glibmm-2.4",
+        "-I/usr/include/goocanvas-2.0"
     ]
 }
