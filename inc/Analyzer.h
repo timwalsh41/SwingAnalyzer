@@ -1,37 +1,85 @@
 #ifndef ANALYZER_H
 #define ANALYZER_H
 
-#include <gtkmm.h>
+#include <Logger.h>
+#include <Synchronizer.h>
+#include <VideoChannel.h>
+
 #include <goocanvasmm.h>
+#include <gtkmm.h>
 
 #include <memory>
 
-#include <Synchronizer.h>
-#include <VideoChannel.h>
-#include <Logger.h>
-
-class Analyzer  
+struct AnalyzerGuiObjects
 {
-    public:
-        Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder);
-        ~Analyzer();
+    // Left/right channel video control buttons
+    Gtk::Button *btnBack5FramesLeft{nullptr}, *btnBack5FramesRight{nullptr};
+    Gtk::Button *btnBack1FrameLeft{nullptr}, *btnBack1FrameRight{nullptr};
+    Gtk::Button *btnForward1FrameLeft{nullptr}, *btnForward1FrameRight{nullptr};
+    Gtk::Button *btnForward5FramesLeft{nullptr}, *btnForward5FramesRight{nullptr};
 
-        // Signal callbacks
-        void load_left_video();
-    private:
-        // maintain a reference to the GTK builder to access the GUI components
-        Glib::RefPtr<Gtk::Builder> m_builder;
+    // Left/right channel video position scroll bars
+    Gtk::Scrollbar *scrollVideoLeft, *scrollVideoRight;
 
-        // the analyzer owns the GooCanvas objects that we'll add to the window
-        Goocanvas::Canvas *m_canvas_left, *m_canvas_right;
+    // Load/unload video buttons and video label
+    Gtk::Button *btnLoadLeftVideo, *btnLoadRightVideo;
+    Gtk::Button *btnUnloadLeftVideo, *btnUnloadRightVideo;
+    Gtk::Label *lblVideoLeft, *lblVideoRight;
 
-        // the analyzer owns the video channels
-        VideoChannel m_channel_left, m_channel_right;
+    // Joint video playback controls
+    Gtk::Button *btnGoToStart, *btnBack5Frames, *btnBack1Frame, *btnForward1Frame, *btnForward5Frames, *btnPlay;
 
-        // the analyzer owns the synchronizer
-        std::unique_ptr<Synchronizer> m_pSynchronizer;
+    // Joint video position scroll bar
+    Gtk::Scrollbar *scrollVideo;
 
-        Logger& m_logger; 
+    // Playback rate combo box
+    Gtk::ComboBox *comboPlaybackRate;
+
+    // Sync mode check box
+    Gtk::CheckButton *chkSyncMode;
+
+    // Annotation controls
+    Gtk::Button *btnPolyline, *btnEllipse, *btnFreehand, *btnDeleteLast, *btnClear;
+
+    // Help button
+    Gtk::Button *btnHelp;
+};
+
+class Analyzer
+{
+  public:
+    Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder);
+    ~Analyzer();
+
+    // Signal callbacks
+    void loadLeftVideo();
+    void loadRightVideo();
+
+    // Callback for toggling control enabling
+    void enableControls(bool syncMode);
+
+  private:
+    // maintain a reference to the GTK builder to access the GUI components
+    Glib::RefPtr<Gtk::Builder> m_builder;
+
+    // the analyzer owns the GooCanvas objects that we'll add to the window
+    Goocanvas::Canvas *m_canvas_left, *m_canvas_right;
+
+    // the analyzer owns the video channels
+    VideoPlayback::VideoChannel m_channel_left{"left"}, m_channel_right{"right"};
+
+    // the analyzer owns the synchronizer
+    std::unique_ptr<VideoPlayback::Synchronizer> m_pSynchronizer;
+
+    // we store the handles to all of our GUI objects in a struct
+    AnalyzerGuiObjects m_guiObjects;
+
+    Logger &m_logger;
+
+    // helper functions to set up UI and callbacks
+    void loadGuiObjects();
+    void setUpCanvases();
+    void connectSignals();
 };
 
 #endif // ANALYZER_H

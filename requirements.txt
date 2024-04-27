@@ -21,3 +21,4 @@ Open video from URL
 Pull videos from Google Photos and store locally
 Maintain local video library when downloading
 Individual step controls for each channel for syncing
+Set video limits (e.g. start and end frame)

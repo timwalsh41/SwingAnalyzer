@@ -5,7 +5,6 @@
 #include <ctime>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <string>
 #include <unordered_map>
 
@@ -23,15 +22,42 @@ class Logger
   public:
     static Logger &get();
     void logString(LogSeverity severity, const std::string &format, ...);
-    void debug(const std::string &format, ...);
-    void info(const std::string &format, ...);
-    void warn(const std::string &format, ...);
-    void error(const std::string &format, ...);
-    void fatal(const std::string &format, ...);
+    void setLogLevel(LogSeverity severity) { m_log_level = severity; }
+
+    template<typename... Args>
+    void debug(const std::string &format, Args... args)
+    {
+        logString(DEBUG, format, std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    void info(const std::string &format, Args... args)
+    {
+        logString(INFO, format, std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    void warn(const std::string &format, Args... args)
+    {
+        logString(WARN, format, std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    void error(const std::string &format, Args... args)
+    {
+        logString(ERROR, format, std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    void fatal(const std::string &format, Args... args)
+    {
+        logString(FATAL, format, std::forward<Args>(args)...);
+    }
 
   private:
     std::ofstream m_file;
     static Logger *m_pInstance;
+    LogSeverity m_log_level = DEBUG;    // TODO: set to INFO
 
     Logger()
     {
@@ -48,7 +74,7 @@ class Logger
             throw std::runtime_error(error_string.str());
         }
 
-        m_file << "Opened log file " << log_filename.str() << "\n";
+        info("Opened log file %s", log_filename.str().c_str());
     }
 
   protected:

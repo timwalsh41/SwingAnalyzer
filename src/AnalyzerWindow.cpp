@@ -19,20 +19,10 @@ AnalyzerWindow::AnalyzerWindow(BaseObjectType *cobject, const Glib::RefPtr<Gtk::
 
     m_pAnalyzer = std::make_unique<Analyzer>(pBuilder);
 
-    /*
-    // call realize to force the window to instantiate
-    realize();
-
-    // window must be instantiated before getting decoration size
-    auto [title_bar_height, border_width] = getWindowDecorationSize();
-    std::cout << "Title bar height: " << title_bar_height << "\n";
-    std::cout << "Border width: " << border_width << "\n";
-    */
-
     show_all();
 }
 
-WindowDecorationSize AnalyzerWindow::getWindowDecorationSize()
+const WindowDecorationSize AnalyzerWindow::getWindowDecorationSize()
 {
     Gdk::Rectangle frame_extents;
 

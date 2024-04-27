@@ -1,8 +1,13 @@
 #include <VideoChannel.h>
-#include <thread>
+#include <VideoPlaybackConstants.h>
 
-VideoChannel::VideoChannel() :
-    m_logger{Logger::get()}
+#include <thread>
+#include <iostream>
+
+namespace VideoPlayback
+{
+
+VideoChannel::VideoChannel(const std::string name) : m_name{name}, m_logger{Logger::get()}
 {
     m_pixbuf = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 100);
     m_image = Goocanvas::Image::create(m_pixbuf, 0, 0);
@@ -18,57 +23,68 @@ VideoChannel::VideoChannel() :
 
 VideoChannel::~VideoChannel()
 {
-
 }
 
 void VideoChannel::playVideoWorkerThread()
 {
-    while (!m_frame.empty())
+    while (m_active_frame < m_end_frame && m_continue_playback)
     {
-        cv::Mat resized_frame;
-        cv::resize(m_frame, resized_frame, cv::Size(m_videoWidth, m_videoHeight));
+        // set the frame index, since the video capture returns the index of the
+        // frame to be captured next, we will subtract one here to reflect the frame
+        // we are currently processing
+        m_active_frame = m_video_capture.get(cv::CAP_PROP_POS_FRAMES) - 1;
+        m_video_position = static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame);
 
-        cv::Mat rgb_frame;
-        cv::cvtColor(resized_frame, rgb_frame, cv::COLOR_BGR2RGB);
+        updateDisplayedFrame();
+        m_video_capture >> m_frame;
 
-        {
-            std::lock_guard<std::mutex> lock(m_pixBufMutex);
-            m_pixbuf = Gdk::Pixbuf::create_from_data(rgb_frame.data, Gdk::COLORSPACE_RGB, false, 8, rgb_frame.cols,
-                                                     rgb_frame.rows, rgb_frame.step);
-        }
-
-        m_dispatcher.emit();
-        m_videoCapture >> m_frame;
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        float frame_time_us = m_frames_per_second / m_framerate_multiplier * 1000;
+        std::this_thread::sleep_for(std::chrono::microseconds(static_cast<long int>(frame_time_us)));
     }
+
+    m_continue_playback = false;
+    m_logger.info("Finished playback of %s channel video", m_name.c_str());
 }
 
 void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
 {
-    // TODO: check height/width inputs
-
-    if (static_cast<float>(availableWidth) / m_videoAspectRatio <= availableHeight)
+    if (availableHeight < 10 || availableWidth < 10)
     {
-        m_videoWidth = availableWidth;
-        m_videoHeight = static_cast<float>(availableWidth) / m_videoAspectRatio;
+        m_logger.error("Invalid video size for %s video: %d x %d", m_name.c_str(), availableWidth, availableHeight);
+        return;
+    }
+
+    if (static_cast<float>(availableWidth) / m_video_aspect_ratio <= availableHeight)
+    {
+        m_video_width = availableWidth;
+        m_video_height = static_cast<float>(availableWidth) / m_video_aspect_ratio;
     }
     else
     {
-        m_videoHeight = availableHeight;
-        m_videoWidth = static_cast<float>(availableHeight) * m_videoAspectRatio;
+        m_video_height = availableHeight;
+        m_video_width = static_cast<float>(availableHeight) * m_video_aspect_ratio;
     }
 
-    m_logger.logString(INFO, "Set video size to %d x %d", m_videoWidth, m_videoHeight);
+    m_logger.info("Set %s channel video size to %d x %d", m_name.c_str(), m_video_width, m_video_height);
 }
 
 const VideoSize VideoChannel::getVideoSize()
 {
-    return {m_videoWidth, m_videoHeight, m_videoAspectRatio};
+    return {m_video_width, m_video_height, m_video_aspect_ratio};
 }
 
-void VideoChannel::playVideo()
+const void VideoChannel::playVideo()
 {
+    if (m_active_frame == m_end_frame)
+    {
+        m_active_frame = m_start_frame;
+        m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
+        m_video_capture >> m_frame;
+        m_logger.info("Reset %s channel video playback to start", m_name.c_str());
+    }
+
     // start our worker thread to process the video frames
+    m_continue_playback = true;
     std::thread workerThread(&VideoChannel::playVideoWorkerThread, this);
     workerThread.detach();
 }
@@ -77,19 +93,22 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
 {
     // TODO: check if path exists, if not throw VIDEO_LOAD_FILE_NOT_FOUND
     // TODO: check if file format is supported, if not throw VIDEO_LOAD_INVALID_TYPE
-    m_videoCapture.open(videoPath);
-    if (!m_videoCapture.isOpened())
+    m_video_capture.open(videoPath);
+    if (!m_video_capture.isOpened())
     {
         return VIDEO_LOAD_UNKNOWN_ERROR;
     }
 
-    m_videoCapture >> m_frame;
-    m_videoAspectRatio = static_cast<float>(m_frame.cols) / static_cast<float>(m_frame.rows);
-    m_fps = m_videoCapture.get(cv::CAP_PROP_FPS);
-    m_frame_count = m_videoCapture.get(cv::CAP_PROP_FRAME_COUNT);
+    m_video_capture >> m_frame;
+    m_video_aspect_ratio = static_cast<float>(m_frame.cols) / static_cast<float>(m_frame.rows);
+    m_frames_per_second = m_video_capture.get(cv::CAP_PROP_FPS);
+    m_frame_count = m_video_capture.get(cv::CAP_PROP_FRAME_COUNT);
+    m_start_frame = 0;
+    m_end_frame = m_frame_count - 1;
 
-    m_logger.logString(INFO, "Loaded video %s with size %d x %d (AR=%.2f), framerate %.2f, and %d frames", 
-        videoPath.c_str(), m_frame.cols, m_frame.rows, m_videoAspectRatio, m_fps, m_frame_count);
+    m_logger.info("Loaded %s channel video %s with size %d x %d (AR=%.2f), framerate %.2f, and %d frames",
+                  m_name.c_str(), videoPath.c_str(), m_frame.cols, m_frame.rows, m_video_aspect_ratio,
+                  m_frames_per_second, m_frame_count);
 
     // TODO: set actual video size...
     setVideoSize(800, 800);
@@ -99,5 +118,148 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
 
 void VideoChannel::unloadVideo()
 {
-
 }
+
+void VideoChannel::playOrPauseVideo()
+{
+    if (m_continue_playback)
+    {
+        m_continue_playback = false;
+    }
+    else
+    {
+        playVideo();
+    }
+}
+
+void VideoChannel::stepFrame(int frame_offset)
+{
+    if (frame_offset == 0)
+    {
+        return;
+    }
+
+    int new_frame = m_active_frame + frame_offset;
+    if (new_frame < m_start_frame || new_frame > m_end_frame)
+    {
+        m_logger.warn(
+            "Invalid frame step, current active frame is %d, step %d results in frame index %d, valid range is (%d,%d)",
+            m_active_frame, frame_offset, new_frame, m_start_frame, m_end_frame);
+        return;
+    }
+
+    m_logger.debug("Stepping %s channel frame from %d to %d", m_name.c_str(), m_active_frame, new_frame);
+
+    m_continue_playback = false;
+    setActiveFrame(new_frame);
+}
+
+void VideoChannel::loadActiveFrame()
+{
+    m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
+    m_video_capture >> m_frame;
+    updateDisplayedFrame();
+}
+
+void VideoChannel::setActiveFrame(int frame_index)
+{
+    if (frame_index < m_start_frame || frame_index > m_end_frame)
+    {
+        m_logger.warn("Invalid frame index for active frame: %d, valid range is (%d,%d)", frame_index, m_start_frame,
+                      m_end_frame);
+        return;
+    }
+
+    // we will stop playback if the frame is set directly
+    m_continue_playback = false;
+
+    m_active_frame = frame_index;
+
+    // update video position accordingly
+    setVideoPosition(static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame));
+
+    // load the frame for display
+    loadActiveFrame();
+}
+
+void VideoChannel::setStartFrame(int frame_index)
+{
+    if (frame_index < 0 || frame_index >= m_end_frame)
+    {
+        m_logger.debug("Invalid frame index for start frame: %d, valid range is (%d,%d)", frame_index, 0,
+                      m_end_frame - 1);
+        return;
+    }
+
+    // we will stop playback if the frame is set directly
+    m_continue_playback = false;
+
+    m_start_frame = frame_index;
+}
+
+void VideoChannel::setEndFrame(int frame_index)
+{
+    if (frame_index <= m_start_frame || frame_index >= m_frame_count)
+    {
+        m_logger.warn("Invalid frame index for end frame: %d, valid range is (%d,%d)", frame_index, m_start_frame + 1,
+                      m_frame_count - 1);
+        return;
+    }
+
+    // we will stop playback if the frame is set directly
+    m_continue_playback = false;
+
+    m_end_frame = frame_index;
+}
+
+void VideoChannel::setVideoPosition(float video_position)
+{
+    if (video_position < 0 || video_position > 1)
+    {
+        m_logger.warn("Invalid video position %.3f, valid range is (0.0,1.0)", video_position);
+        return;
+    }
+
+    // we will stop playback if the frame is set directly
+    m_continue_playback = false;
+
+    m_video_position = video_position;
+    m_active_frame = m_start_frame + static_cast<int>(m_video_position * (m_end_frame - m_start_frame));
+
+    // TODO: update slider position
+}
+
+void VideoChannel::updateDisplayedFrame()
+{
+    cv::Mat resized_frame;
+    cv::Mat rgb_frame;
+
+    cv::resize(m_frame, resized_frame, cv::Size(m_video_width, m_video_height));
+    cv::cvtColor(resized_frame, rgb_frame, cv::COLOR_BGR2RGB);
+    
+    // we lock here as this function will be called from the worker thread
+    {
+        std::lock_guard<std::mutex> lock(m_pixBufMutex);
+        m_pixbuf = Gdk::Pixbuf::create_from_data(rgb_frame.data, Gdk::COLORSPACE_RGB, false, 8, rgb_frame.cols,
+                                                 rgb_frame.rows, rgb_frame.step);
+    }
+
+    // emit this dispatcher signal to trigger the update of the canvas image
+    m_dispatcher.emit();
+}
+
+void VideoChannel::setFramerateMultiplier(float framerate_multiplier)
+{
+    if (framerate_multiplier > MAX_FRAMERATE_MULTIPLIER || framerate_multiplier < MIN_FRAMERATE_MULTIPLIER)
+    {
+        m_logger.warn("Invalid framerate multiplier %.3f, valid range is (%.3f,%.3f)", framerate_multiplier,
+                      MIN_FRAMERATE_MULTIPLIER, MAX_FRAMERATE_MULTIPLIER);
+        return;
+    }
+
+    // stop playback if we update the framerate
+    m_continue_playback = false;
+    m_framerate_multiplier = framerate_multiplier;
+}
+
+} // namespace VideoPlayback

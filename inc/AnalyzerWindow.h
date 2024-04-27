@@ -1,14 +1,10 @@
 #ifndef ANALYZERWINDOW_H
 #define ANALYZERWINDOW_H
 
-#include <cairomm/context.h>
-#include <glibmm/main.h>
-#include <goocanvasmm.h>
-#include <gtkmm.h>
-#include <iostream>
-#include <memory>
-#include <opencv2/opencv.hpp>
 #include <Analyzer.h>
+
+#include <glibmm/main.h>
+#include <gtkmm.h>
 
 struct WindowDecorationSize
 {
@@ -26,12 +22,12 @@ class AnalyzerWindow : public Gtk::Window
     Glib::RefPtr<Gtk::Builder> m_builder;
 
     std::unique_ptr<Analyzer> m_pAnalyzer;
-        
+
     // window width and height are used for resizing the video
     int m_windowWidth{0}, m_windowHeight{0};
 
     // this function is used to get the size of the usable window area (not including the title bar)
-    WindowDecorationSize getWindowDecorationSize();
+    const WindowDecorationSize getWindowDecorationSize();
 };
 
 #endif // ANALYZERWINDOW_H

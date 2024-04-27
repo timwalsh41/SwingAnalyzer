@@ -1,18 +1,21 @@
 #ifndef VIDEOCHANNEL_H
 #define VIDEOCHANNEL_H
 
+#include <Logger.h>
+
 #include <glibmm/main.h>
 #include <goocanvasmm.h>
 #include <opencv2/opencv.hpp>
 
 #include <mutex>
+#include <string>
 
-#include <Logger.h>
-
+namespace VideoPlayback
+{
 struct VideoSize
 {
-    float width;
-    float height;
+    int width;
+    int height;
     float aspectRatio;
 };
 
@@ -27,7 +30,7 @@ enum VideoLoadStatus
 class VideoChannel
 {
   public:
-    VideoChannel();
+    VideoChannel(const std::string name);
     ~VideoChannel();
 
     const Glib::RefPtr<Goocanvas::Image> &get_image()
@@ -35,15 +38,48 @@ class VideoChannel
         return m_image;
     }
 
-  void setVideoSize(int availableHeight, int availableWidth);
-  const VideoSize getVideoSize();
-  VideoLoadStatus loadVideo(const std::string &videoPath);
-  void unloadVideo();
-  void playVideo();
+    const int getActiveFrame()
+    {
+        return m_active_frame;
+    }
+    const int getStartFrame()
+    {
+        return m_start_frame;
+    }
+    const int getEndFrame()
+    {
+        return m_end_frame;
+    }
+    const int getFrameCount()
+    {
+        return m_frame_count;
+    }
+    const float getVideoPosition()
+    {
+        return m_video_position;
+    }
+    const float getFramerateMultiplier()
+    {
+        return m_framerate_multiplier;
+    }
+
+    void playOrPauseVideo();
+    void stepFrame(int frame_offset);
+    void setActiveFrame(int frame_index);
+    void setStartFrame(int start_frame);
+    void setEndFrame(int end_frame);
+    void setVideoPosition(float video_position);
+    void setFramerateMultiplier(float framerate_multiplier);
+
+    void setVideoSize(int availableHeight, int availableWidth);
+    const VideoSize getVideoSize();
+    VideoLoadStatus loadVideo(const std::string &videoPath);
+    void unloadVideo();
+    const void playVideo();
 
   private:
     // video capture object holds the video data and provides individual frames
-    cv::VideoCapture m_videoCapture;
+    cv::VideoCapture m_video_capture;
 
     // the Mat object holds the data for the current frame
     cv::Mat m_frame{};
@@ -64,20 +100,45 @@ class VideoChannel
     Glib::RefPtr<Goocanvas::Image> m_image;
 
     // Video properties
-    double m_fps;
+    double m_frames_per_second;
     int m_frame_count;
 
     // Video size
-    float m_videoWidth{0}, m_videoHeight{0};
-    float m_videoAspectRatio{0};
+    int m_video_width{0}, m_video_height{0};
+    float m_video_aspect_ratio{0};
 
-    Logger& m_logger;
+    // current displayed frame, this will be kept in sync with the video position
+    int m_active_frame{0};
+
+    // video position as a proportion of the range between the start frame and end frame, this will be kept in
+    // sync with the active frame
+    float m_video_position{0};
+
+    // active range of frames
+    int m_start_frame{0};
+    int m_end_frame{0};
+
+    // flag to continue playback in worker thread
+    bool m_continue_playback{false};
+
+    // framerate multiplier to adjust playback speed
+    float m_framerate_multiplier{1};
+
+    // Name of channel
+    std::string m_name;
+
+    Logger &m_logger;
+
+    // Function to directly load the next frame
+    void loadActiveFrame();
+
+    // Function to update the display for the active frame
+    void updateDisplayedFrame();
 
     // Function for the video playback worker thread that processes the video frames
     // and updates the pixbuf for display on the canvas
     void playVideoWorkerThread();
-
-
 };
 
+} // namespace VideoPlayback
 #endif // VIDEOCHANNEL_H

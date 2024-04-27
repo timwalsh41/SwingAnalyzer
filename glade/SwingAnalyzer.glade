@@ -101,7 +101,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
-                      <object class="GtkButton" id="BtnLoadLeft">
+                      <object class="GtkButton" id="BtnLoadLeftVideo">
                         <property name="label" translatable="yes">Load</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
@@ -114,7 +114,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="BtnUnloadLeft">
+                      <object class="GtkButton" id="BtnUnloadLeftVideo">
                         <property name="label" translatable="yes">Unload</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
@@ -127,7 +127,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkLabel" id="LblVideoFileLeft">
+                      <object class="GtkLabel" id="LblVideoLeft">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">No file loaded</property>
@@ -191,7 +191,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkScrollbar">
+                      <object class="GtkScrollbar" id="ScrollVideoRight">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                       </object>
@@ -239,7 +239,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
-                      <object class="GtkButton" id="BtnLoadRight">
+                      <object class="GtkButton" id="BtnLoadRightVideo">
                         <property name="label" translatable="yes">Load</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
@@ -252,7 +252,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="BtnUnloadRight">
+                      <object class="GtkButton" id="BtnUnloadRightVideo">
                         <property name="label" translatable="yes">Unload</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
@@ -265,7 +265,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkLabel" id="LblVideoFileRight">
+                      <object class="GtkLabel" id="LblVideoRight">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">No file loaded</property>
@@ -299,7 +299,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkScrollbar" id="ScrollVideoMain">
+          <object class="GtkScrollbar" id="ScrollVideo">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
@@ -327,6 +327,32 @@
               </packing>
             </child>
             <child>
+              <object class="GtkButton" id="BtnBack5Frames">
+                <property name="label" translatable="yes">&lt;&lt;</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="BtnBack1Frame">
+                <property name="label" translatable="yes">&lt;</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkButton" id="BtnPlay">
                 <property name="label" translatable="yes">Play</property>
                 <property name="visible">True</property>
@@ -336,7 +362,33 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">1</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="BtnForward1Frame">
+                <property name="label" translatable="yes">&gt;</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="BtnForward5Frames">
+                <property name="label" translatable="yes">&gt;&gt;</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">5</property>
               </packing>
             </child>
             <child>
@@ -349,7 +401,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">2</property>
+                <property name="position">6</property>
               </packing>
             </child>
             <child>
@@ -362,7 +414,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">3</property>
+                <property name="position">7</property>
               </packing>
             </child>
             <child>
@@ -375,7 +427,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">4</property>
+                <property name="position">8</property>
               </packing>
             </child>
             <child>
@@ -388,7 +440,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">5</property>
+                <property name="position">9</property>
               </packing>
             </child>
             <child>
@@ -401,7 +453,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">6</property>
+                <property name="position">10</property>
               </packing>
             </child>
             <child>
@@ -414,22 +466,22 @@
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="padding">7</property>
-                <property name="position">7</property>
+                <property name="position">11</property>
               </packing>
             </child>
             <child>
-              <object class="GtkComboBox" id="ComboPlaybackSpeed">
+              <object class="GtkComboBox" id="ComboPlaybackRate">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
               </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">8</property>
+                <property name="position">12</property>
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton" id="SelectSyncVideo">
+              <object class="GtkCheckButton" id="ChkSyncMode">
                 <property name="label" translatable="yes">Sync video mode</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -440,7 +492,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">9</property>
+                <property name="position">13</property>
               </packing>
             </child>
             <child>
@@ -453,7 +505,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">10</property>
+                <property name="position">14</property>
               </packing>
             </child>
           </object>
