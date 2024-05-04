@@ -7,20 +7,12 @@
 #include <Logger.h>
 
 Logger *Logger::m_pInstance = nullptr;
-
-Logger &Logger::get()
-{
-    if (!m_pInstance)
-    {
-        static std::unique_ptr<Logger> instance(new Logger());
-        m_pInstance = instance.get();
-    }
-
-    return *m_pInstance;
-}
+std::once_flag Logger::m_once_flag;
 
 void Logger::logString(LogSeverity severity, const std::string &format, ...)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     if (!m_file.is_open())
     {
         std::cerr << "Log m_file is not open\n";

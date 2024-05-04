@@ -56,7 +56,11 @@ class Analyzer
     void loadRightVideo();
 
     // Callback for toggling control enabling
-    void enableControls(bool syncMode);
+    void syncModeToggle(bool syncMode);
+
+    // Callbacks for left/right channel to update video position for the slider
+    void updateLeftVideoPosition(float video_position);
+    void updateRightVideoPosition(float video_position);
 
   private:
     // maintain a reference to the GTK builder to access the GUI components
@@ -66,7 +70,14 @@ class Analyzer
     Goocanvas::Canvas *m_canvas_left, *m_canvas_right;
 
     // the analyzer owns the video channels
-    VideoPlayback::VideoChannel m_channel_left{"left"}, m_channel_right{"right"};
+    VideoPlayback::VideoChannel m_channel_left{"left",
+                                               [this](float position) { this->updateLeftVideoPosition(position); }};
+    VideoPlayback::VideoChannel m_channel_right{"right",
+                                               [this](float position) { this->updateRightVideoPosition(position); }};
+
+    // hold the connections for the scrollbar callbacks so we can disable them when
+    // the scrollbar position is updated by the video channels
+    sigc::connection m_left_channel_scrollbar_connection, m_right_channel_scrollbar_connection;
 
     // the analyzer owns the synchronizer
     std::unique_ptr<VideoPlayback::Synchronizer> m_pSynchronizer;
@@ -78,7 +89,7 @@ class Analyzer
 
     // helper functions to set up UI and callbacks
     void loadGuiObjects();
-    void setUpCanvases();
+    void setUpGui();
     void connectSignals();
 };
 

@@ -4,15 +4,14 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
 {
     m_logger.info("Initializing Analyzer");
 
-    m_pSynchronizer = std::make_unique<VideoPlayback::Synchronizer>(
-        &m_channel_left, &m_channel_right, [this](bool enable) { this->enableControls(enable); });
+    m_pSynchronizer = std::make_unique<VideoPlayback::Synchronizer>(&m_channel_left, &m_channel_right);
 
     loadGuiObjects();
-    setUpCanvases();
+    setUpGui();
     connectSignals();
 
     // by default we'll start in sync mode
-    enableControls(true);
+    syncModeToggle(true);
     m_guiObjects.chkSyncMode->set_active(true);
 
     // TODO: TEMPORARY TEST CODE TO ADD AN ANNOTATION ON THE LEFT CANVAS
@@ -24,7 +23,7 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
     m_channel_left.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
     auto video_size = m_channel_left.getVideoSize();
     m_canvas_left->set_size_request(video_size.width, video_size.height);
-    m_channel_left.playVideo();
+    m_channel_left.playOrPauseVideo();
 }
 
 Analyzer::~Analyzer()
@@ -39,11 +38,41 @@ void Analyzer::loadRightVideo()
 {
 }
 
+void Analyzer::updateLeftVideoPosition(float video_position)
+{
+    if (video_position < 0 || video_position > 1)
+    {
+        m_logger.error("Invalid video position for left channel: %f", video_position);
+        return;
+    }
+
+    // we'll block the scrollbar update while we update the scrollbar position
+    m_left_channel_scrollbar_connection.block();
+    m_guiObjects.scrollVideoLeft->set_value(video_position);
+    m_left_channel_scrollbar_connection.unblock();
+}
+
+void Analyzer::updateRightVideoPosition(float video_position)
+{
+    if (video_position < 0 || video_position > 1)
+    {
+        m_logger.error("Invalid video position for right channel: %f", video_position);
+        return;
+    }
+
+    // we'll block the scrollbar update while we update the scrollbar position
+    m_right_channel_scrollbar_connection.block();
+    m_guiObjects.scrollVideoRight->set_value(video_position);
+    m_right_channel_scrollbar_connection.unblock();
+}
+
 // When in sync mode, we disable the joint controls and enable the individual video
 // controls, and vice versa when in playback mode
-void Analyzer::enableControls(bool syncMode)
+void Analyzer::syncModeToggle(bool syncMode)
 {
     m_logger.info("Enabling %s controls", syncMode ? "sync" : "playback");
+
+    m_pSynchronizer->setSyncMode(syncMode);
 
     m_guiObjects.btnGoToStart->set_sensitive(!syncMode);
     m_guiObjects.btnBack5Frames->set_sensitive(!syncMode);
@@ -72,14 +101,17 @@ void Analyzer::connectSignals()
     m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(-5); });
     m_guiObjects.btnBack1FrameLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(-1); });
     m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(1); });
-    m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(5); });    
+    m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(5); });
 
-    m_guiObjects.chkSyncMode->signal_toggled().connect([this]() {
-        this->enableControls(this->m_guiObjects.chkSyncMode->get_active());
+    m_guiObjects.chkSyncMode->signal_toggled().connect(
+        [this]() { this->syncModeToggle(this->m_guiObjects.chkSyncMode->get_active()); });
+
+    m_left_channel_scrollbar_connection = m_guiObjects.scrollVideoLeft->signal_value_changed().connect([this]() {
+        this->m_channel_left.setVideoPosition(this->m_guiObjects.scrollVideoLeft->get_value());
     });
 }
 
-void Analyzer::setUpCanvases()
+void Analyzer::setUpGui()
 {
     m_canvas_left = Gtk::manage(new Goocanvas::Canvas());
     m_canvas_right = Gtk::manage(new Goocanvas::Canvas());
@@ -112,6 +144,12 @@ void Analyzer::setUpCanvases()
 
     m_canvas_left->get_root_item()->add_child(m_channel_left.get_image());
     m_canvas_right->get_root_item()->add_child(m_channel_right.get_image());
+
+    auto left_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
+    m_guiObjects.scrollVideoLeft->set_adjustment(left_adjustment);
+
+    auto right_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
+    m_guiObjects.scrollVideoLeft->set_adjustment(right_adjustment);
 }
 
 void Analyzer::loadGuiObjects()

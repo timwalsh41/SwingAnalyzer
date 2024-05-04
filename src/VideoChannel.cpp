@@ -2,22 +2,38 @@
 #include <VideoPlaybackConstants.h>
 
 #include <thread>
-#include <iostream>
 
 namespace VideoPlayback
 {
 
-VideoChannel::VideoChannel(const std::string name) : m_name{name}, m_logger{Logger::get()}
+VideoChannel::VideoChannel(const std::string name, std::function<void(float)> m_update_video_position_callback)
+    : m_name{name}, m_logger{Logger::get()}, m_update_video_position_callback{m_update_video_position_callback}
 {
     m_pixbuf = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 100);
     m_image = Goocanvas::Image::create(m_pixbuf, 0, 0);
 
+    m_profiler_frame.reset();
+    m_profiler_image.reset();
+
     // our dispatcher will trigger the update of the canvas image pixbuf
     // the dispatcher is triggered by the worker thread
     m_dispatcher.connect([this]() {
-        std::lock_guard<std::mutex> lock(m_pixBufMutex);
-        m_image->property_pixbuf() = m_pixbuf;
-        // m_canvas->queue_draw();
+        m_profiler_image.tick();
+
+        {
+            std::lock_guard<std::mutex> lock(m_pixBufMutex);
+            m_image->property_pixbuf() = m_pixbuf;
+        }
+
+        if (m_update_video_position)
+        {
+            // update video position accordingly
+            updateVideoPosition(static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame),
+                                false);
+            m_update_video_position = false;
+        }
+
+        m_profiler_image.tock();
     });
 }
 
@@ -27,22 +43,37 @@ VideoChannel::~VideoChannel()
 
 void VideoChannel::playVideoWorkerThread()
 {
+    m_frame_time_us = m_frames_per_second / m_framerate_multiplier * 1000;
+
+    m_logger.info("Starting playback of %s channel video with frame time %.2f ms", m_name.c_str(),
+                  m_frame_time_us / 1000);
+
     while (m_active_frame < m_end_frame && m_continue_playback)
     {
+        m_profiler_frame.tick();
+
         // set the frame index, since the video capture returns the index of the
         // frame to be captured next, we will subtract one here to reflect the frame
         // we are currently processing
         m_active_frame = m_video_capture.get(cv::CAP_PROP_POS_FRAMES) - 1;
         m_video_position = static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame);
 
+        // set the internal flag to update video position
+        m_update_video_position = true;
+
         updateDisplayedFrame();
         m_video_capture >> m_frame;
 
-        float frame_time_us = m_frames_per_second / m_framerate_multiplier * 1000;
-        std::this_thread::sleep_for(std::chrono::microseconds(static_cast<long int>(frame_time_us)));
+        m_profiler_frame.tock();
+
+        std::this_thread::sleep_until(m_profiler_frame.getTickTime() + std::chrono::microseconds(static_cast<long int>(m_frame_time_us)));
     }
 
     m_continue_playback = false;
+    m_profiler_frame.dump();
+    m_profiler_image.dump();
+    m_profiler_frame.reset();
+    m_profiler_frame.reset();
     m_logger.info("Finished playback of %s channel video", m_name.c_str());
 }
 
@@ -150,15 +181,13 @@ void VideoChannel::stepFrame(int frame_offset)
 
     m_logger.debug("Stepping %s channel frame from %d to %d", m_name.c_str(), m_active_frame, new_frame);
 
+    // stepping the frame will halt playback if active
     m_continue_playback = false;
-    setActiveFrame(new_frame);
-}
 
-void VideoChannel::loadActiveFrame()
-{
-    m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
-    m_video_capture >> m_frame;
-    updateDisplayedFrame();
+    // this will require a video position update
+    m_update_video_position = true;
+
+    setActiveFrame(new_frame);
 }
 
 void VideoChannel::setActiveFrame(int frame_index)
@@ -175,11 +204,10 @@ void VideoChannel::setActiveFrame(int frame_index)
 
     m_active_frame = frame_index;
 
-    // update video position accordingly
-    setVideoPosition(static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame));
-
     // load the frame for display
-    loadActiveFrame();
+    m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
+    m_video_capture >> m_frame;
+    updateDisplayedFrame();
 }
 
 void VideoChannel::setStartFrame(int frame_index)
@@ -187,7 +215,7 @@ void VideoChannel::setStartFrame(int frame_index)
     if (frame_index < 0 || frame_index >= m_end_frame)
     {
         m_logger.debug("Invalid frame index for start frame: %d, valid range is (%d,%d)", frame_index, 0,
-                      m_end_frame - 1);
+                       m_end_frame - 1);
         return;
     }
 
@@ -220,13 +248,7 @@ void VideoChannel::setVideoPosition(float video_position)
         return;
     }
 
-    // we will stop playback if the frame is set directly
-    m_continue_playback = false;
-
-    m_video_position = video_position;
-    m_active_frame = m_start_frame + static_cast<int>(m_video_position * (m_end_frame - m_start_frame));
-
-    // TODO: update slider position
+    updateVideoPosition(video_position, true);
 }
 
 void VideoChannel::updateDisplayedFrame()
@@ -236,7 +258,7 @@ void VideoChannel::updateDisplayedFrame()
 
     cv::resize(m_frame, resized_frame, cv::Size(m_video_width, m_video_height));
     cv::cvtColor(resized_frame, rgb_frame, cv::COLOR_BGR2RGB);
-    
+
     // we lock here as this function will be called from the worker thread
     {
         std::lock_guard<std::mutex> lock(m_pixBufMutex);
@@ -260,6 +282,27 @@ void VideoChannel::setFramerateMultiplier(float framerate_multiplier)
     // stop playback if we update the framerate
     m_continue_playback = false;
     m_framerate_multiplier = framerate_multiplier;
+}
+
+void VideoChannel::updateVideoPosition(float video_position, bool update_frame)
+{
+    m_video_position = video_position;
+
+    if (update_frame)
+    {
+        // we will stop playback if the frame is set directly
+        m_continue_playback = false;
+        int new_frame = m_start_frame + static_cast<int>(m_video_position * (m_end_frame - m_start_frame));
+
+        // make sure we don't trigger a subsequent video position update
+        m_update_video_position = false;
+        setActiveFrame(new_frame);
+    }
+    else
+    {
+        // trigger update of slider position in GUI
+        m_update_video_position_callback(m_video_position);
+    }
 }
 
 } // namespace VideoPlayback

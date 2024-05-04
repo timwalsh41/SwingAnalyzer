@@ -5,6 +5,7 @@
 #include <ctime>
 #include <fstream>
 #include <iomanip>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -20,36 +21,44 @@ enum LogSeverity
 class Logger
 {
   public:
-    static Logger &get();
-    void logString(LogSeverity severity, const std::string &format, ...);
-    void setLogLevel(LogSeverity severity) { m_log_level = severity; }
+    static Logger &get()
+    {
+        // force this call once so that we don't create multiple instances
+        std::call_once(m_once_flag, [] {
+            static std::unique_ptr<Logger> instance(new Logger());
+            m_pInstance = instance.get();
+        });
 
-    template<typename... Args>
-    void debug(const std::string &format, Args... args)
+        return *m_pInstance;
+    }
+
+    void logString(LogSeverity severity, const std::string &format, ...);
+    void setLogLevel(LogSeverity severity)
+    {
+        m_log_level = severity;
+    }
+
+    template <typename... Args> void debug(const std::string &format, Args... args)
     {
         logString(DEBUG, format, std::forward<Args>(args)...);
     }
 
-    template<typename... Args>
-    void info(const std::string &format, Args... args)
+    template <typename... Args> void info(const std::string &format, Args... args)
     {
         logString(INFO, format, std::forward<Args>(args)...);
     }
 
-    template<typename... Args>
-    void warn(const std::string &format, Args... args)
+    template <typename... Args> void warn(const std::string &format, Args... args)
     {
         logString(WARN, format, std::forward<Args>(args)...);
     }
 
-    template<typename... Args>
-    void error(const std::string &format, Args... args)
+    template <typename... Args> void error(const std::string &format, Args... args)
     {
         logString(ERROR, format, std::forward<Args>(args)...);
     }
 
-    template<typename... Args>
-    void fatal(const std::string &format, Args... args)
+    template <typename... Args> void fatal(const std::string &format, Args... args)
     {
         logString(FATAL, format, std::forward<Args>(args)...);
     }
@@ -57,7 +66,7 @@ class Logger
   private:
     std::ofstream m_file;
     static Logger *m_pInstance;
-    LogSeverity m_log_level = DEBUG;    // TODO: set to INFO
+    LogSeverity m_log_level = DEBUG; // TODO: set to INFO
 
     Logger()
     {
@@ -90,6 +99,9 @@ class Logger
     }
 
   private:
+    std::mutex m_mutex;
+    static std::once_flag m_once_flag;
+
     const std::unordered_map<LogSeverity, std::string> m_log_severity_map = {
         {DEBUG, "DEBUG"}, {INFO, "INFO"}, {WARN, "WARNING"}, {ERROR, "ERROR"}, {FATAL, "FATAL"}};
 };
