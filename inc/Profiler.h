@@ -23,10 +23,26 @@ class Profiler
     void tock();
 
     // clear the current profiler data
-    void reset();
+    void reset(bool skip_first = false);
 
     // dump the profiler data to the logger
     void dump();
+
+    double getLastInterval() const
+    {
+      if (m_v_intervals.empty())
+        return 0.;
+
+      return m_v_intervals.back().count();
+    }
+
+    double getLastDuration() const
+    {
+      if (m_v_durations.empty())
+        return 0.;
+
+      return m_v_durations.back().count();
+    }
 
     std::chrono::time_point<std::chrono::high_resolution_clock> getTickTime() const
     {
@@ -47,6 +63,12 @@ class Profiler
     // flag to indicate if we are in a tick period, e.g. we've gotten tick call
     // but not yet a tock call
     bool m_in_tick_period{false};
+
+    // flag to skip the first data point, if necessary - the purpose of this is that I
+    // noticed that the the first interval for the image profiler was consistently very
+    // short, so this way we can exclude it from the data analysis
+    // we default to true here so that we would not skip by default
+    bool m_skipped_first{true};
 
     Logger &m_logger;
 };

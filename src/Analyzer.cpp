@@ -20,10 +20,18 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
     rect->property_line_width() = 6;
     m_canvas_left->get_root_item()->add_child(rect);
     m_canvas_left->show();
+
+    // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNEL
     m_channel_left.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
     auto video_size = m_channel_left.getVideoSize();
     m_canvas_left->set_size_request(video_size.width, video_size.height);
+    
+    m_channel_right.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
+    video_size = m_channel_right.getVideoSize();
+    m_canvas_right->set_size_request(video_size.width, video_size.height);
+    
     m_channel_left.playOrPauseVideo();
+    m_channel_right.playOrPauseVideo();
 }
 
 Analyzer::~Analyzer()
@@ -103,11 +111,20 @@ void Analyzer::connectSignals()
     m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(1); });
     m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(5); });
 
+    m_guiObjects.btnBack5FramesRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(-5); });
+    m_guiObjects.btnBack1FrameRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(-1); });
+    m_guiObjects.btnForward1FrameRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(1); });
+    m_guiObjects.btnForward5FramesRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(5); });
+
     m_guiObjects.chkSyncMode->signal_toggled().connect(
         [this]() { this->syncModeToggle(this->m_guiObjects.chkSyncMode->get_active()); });
 
     m_left_channel_scrollbar_connection = m_guiObjects.scrollVideoLeft->signal_value_changed().connect([this]() {
         this->m_channel_left.setVideoPosition(this->m_guiObjects.scrollVideoLeft->get_value());
+    });
+
+    m_right_channel_scrollbar_connection = m_guiObjects.scrollVideoRight->signal_value_changed().connect([this]() {
+        this->m_channel_right.setVideoPosition(this->m_guiObjects.scrollVideoLeft->get_value());
     });
 }
 

@@ -13,17 +13,27 @@ VideoChannel::VideoChannel(const std::string name, std::function<void(float)> m_
     m_image = Goocanvas::Image::create(m_pixbuf, 0, 0);
 
     m_profiler_frame.reset();
-    m_profiler_image.reset();
+    m_profiler_image.reset(true);
 
     // our dispatcher will trigger the update of the canvas image pixbuf
     // the dispatcher is triggered by the worker thread
     m_dispatcher.connect([this]() {
+        cv::Mat resized_frame;
+        cv::Mat rgb_frame;
+
         m_profiler_image.tick();
 
         {
-            std::lock_guard<std::mutex> lock(m_pixBufMutex);
-            m_image->property_pixbuf() = m_pixbuf;
+            std::lock_guard<std::mutex> lock(m_frameMutex);
+            cv::resize(m_frame, resized_frame, cv::Size(m_video_width, m_video_height));
         }
+
+        cv::cvtColor(resized_frame, rgb_frame, cv::COLOR_BGR2RGB);
+        m_pixbuf = Gdk::Pixbuf::create_from_data(rgb_frame.data, Gdk::COLORSPACE_RGB, false, 8, rgb_frame.cols,
+                                                rgb_frame.rows, rgb_frame.step);
+
+
+        m_image->property_pixbuf() = m_pixbuf;
 
         if (m_update_video_position)
         {
@@ -43,10 +53,15 @@ VideoChannel::~VideoChannel()
 
 void VideoChannel::playVideoWorkerThread()
 {
-    m_frame_time_us = m_frames_per_second / m_framerate_multiplier * 1000;
+    cv::Mat frame;
+
+    m_frame_time_us = 1 / m_framerate_multiplier / m_frames_per_second * 1e6;
 
     m_logger.info("Starting playback of %s channel video with frame time %.2f ms", m_name.c_str(),
                   m_frame_time_us / 1000);
+
+    // grab the first frame
+    m_video_capture >> frame;
 
     while (m_active_frame < m_end_frame && m_continue_playback)
     {
@@ -61,20 +76,29 @@ void VideoChannel::playVideoWorkerThread()
         // set the internal flag to update video position
         m_update_video_position = true;
 
-        updateDisplayedFrame();
-        m_video_capture >> m_frame;
+        if (frame.empty())
+        {
+            m_logger.warn("Frame %d is empty for %s channel, not updating frame", m_active_frame, m_name.c_str());
+        }
+        else
+        {
+            updateDisplayedFrame(frame);
+        }
+
+        m_video_capture >> frame;
 
         m_profiler_frame.tock();
 
         std::this_thread::sleep_until(m_profiler_frame.getTickTime() + std::chrono::microseconds(static_cast<long int>(m_frame_time_us)));
     }
 
-    m_continue_playback = false;
     m_profiler_frame.dump();
     m_profiler_image.dump();
     m_profiler_frame.reset();
-    m_profiler_frame.reset();
-    m_logger.info("Finished playback of %s channel video", m_name.c_str());
+    m_profiler_image.reset(true);
+
+    m_continue_playback = false;
+    m_logger.info("Channel %s finished playback", m_name.c_str());
 }
 
 void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
@@ -110,7 +134,6 @@ const void VideoChannel::playVideo()
     {
         m_active_frame = m_start_frame;
         m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
-        m_video_capture >> m_frame;
         m_logger.info("Reset %s channel video playback to start", m_name.c_str());
     }
 
@@ -122,8 +145,8 @@ const void VideoChannel::playVideo()
 
 VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
 {
-    // TODO: check if path exists, if not throw VIDEO_LOAD_FILE_NOT_FOUND
-    // TODO: check if file format is supported, if not throw VIDEO_LOAD_INVALID_TYPE
+    // TODO: check if path exists, if not return VIDEO_LOAD_FILE_NOT_FOUND
+    // TODO: check if file format is supported, if not return VIDEO_LOAD_INVALID_TYPE
     m_video_capture.open(videoPath);
     if (!m_video_capture.isOpened())
     {
@@ -205,9 +228,10 @@ void VideoChannel::setActiveFrame(int frame_index)
     m_active_frame = frame_index;
 
     // load the frame for display
+    cv::Mat frame;
     m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
-    m_video_capture >> m_frame;
-    updateDisplayedFrame();
+    m_video_capture >> frame;
+    updateDisplayedFrame(frame);
 }
 
 void VideoChannel::setStartFrame(int frame_index)
@@ -251,19 +275,12 @@ void VideoChannel::setVideoPosition(float video_position)
     updateVideoPosition(video_position, true);
 }
 
-void VideoChannel::updateDisplayedFrame()
+void VideoChannel::updateDisplayedFrame(const cv::Mat &frame)
 {
-    cv::Mat resized_frame;
-    cv::Mat rgb_frame;
-
-    cv::resize(m_frame, resized_frame, cv::Size(m_video_width, m_video_height));
-    cv::cvtColor(resized_frame, rgb_frame, cv::COLOR_BGR2RGB);
-
-    // we lock here as this function will be called from the worker thread
+    // we lock here as this function can be called from the worker thread
     {
-        std::lock_guard<std::mutex> lock(m_pixBufMutex);
-        m_pixbuf = Gdk::Pixbuf::create_from_data(rgb_frame.data, Gdk::COLORSPACE_RGB, false, 8, rgb_frame.cols,
-                                                 rgb_frame.rows, rgb_frame.step);
+        std::lock_guard<std::mutex> lock(m_frameMutex);
+        m_frame = frame.clone();
     }
 
     // emit this dispatcher signal to trigger the update of the canvas image

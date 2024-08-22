@@ -18,9 +18,19 @@ void Profiler::tick()
 
     auto tick_time = std::chrono::high_resolution_clock::now();
 
+    // we can record the tick to tick interval once we've completed one tick to
+    // tock cycle
     if (!m_v_durations.empty())
     {
+        if (!m_skipped_first)
+        {
+            m_skipped_first = true;
+            return;
+        }
+
+        // we have completed at least one tick-to-tock cycle, so we can record interval
         auto interval = std::chrono::duration_cast<std::chrono::duration<double>>(tick_time - m_tick_time);
+
         m_v_intervals.push_back(interval);
     }
 
@@ -44,10 +54,16 @@ void Profiler::tock()
     m_in_tick_period = false;
 }
 
-void Profiler::reset()
+void Profiler::reset(bool skip_first)
 {
     m_v_durations.clear();
     m_v_intervals.clear();
+
+    m_in_tick_period = false;
+
+    // if we are skipping the first data point, then we need to set the flag
+    // to false so that we will skip
+    m_skipped_first = !skip_first;
 }
 
 void Profiler::dump()

@@ -97,9 +97,10 @@ class VideoChannel
     // the main thread to update the pixbuf
     Glib::Dispatcher m_dispatcher;
 
-    // this mutex is used to protect the pixbuf, which is updated with the new frame data
-    // the the video playback thread, and read from the main thread to update the canvas
-    std::mutex m_pixBufMutex;
+    // this mutex is used to protect the active frame data, which is updated with the latest frame
+    // from the video capture in the video playback thread, and read from the main thread to update 
+    // the canvas
+    std::mutex m_frameMutex;
 
     // the image object is the Goocanvas object that displays the video frames on the canvas
     Glib::RefPtr<Goocanvas::Image> m_image;
@@ -136,14 +137,14 @@ class VideoChannel
     bool m_update_video_position{false};
 
     // framerate multiplier to adjust playback speed
-    float m_framerate_multiplier{1.};
+    float m_framerate_multiplier{1};
 
     // Name of channel
     std::string m_name;
 
     // We will profile the frame capture and image update operations
-    Utility::Profiler m_profiler_frame{"VideoChannelFrameProfiler"};
-    Utility::Profiler m_profiler_image{"VideoChannelImageProfiler"};
+    Utility::Profiler m_profiler_frame{m_name + "VideoChannelFrameProfiler"};
+    Utility::Profiler m_profiler_image{m_name + "VideoChannelImageProfiler"};
 
     Logger &m_logger;
 
@@ -151,7 +152,7 @@ class VideoChannel
     void setActiveFrame(int frame_index);
 
     // Function to update the display for the active frame
-    void updateDisplayedFrame();
+    void updateDisplayedFrame(const cv::Mat &frame);
 
     // Function for the video playback worker thread that processes the video frames
     // and updates the pixbuf for display on the canvas
