@@ -70,9 +70,9 @@ class Analyzer
     Goocanvas::Canvas *m_canvas_left, *m_canvas_right;
 
     // the analyzer owns the video channels
-    VideoPlayback::VideoChannel m_channel_left{"left",
+    VideoPlayback::VideoChannel m_pChannel_left{"left",
                                                [this](float position) { this->updateLeftVideoPosition(position); }};
-    VideoPlayback::VideoChannel m_channel_right{"right",
+    VideoPlayback::VideoChannel m_pChannel_right{"right",
                                                [this](float position) { this->updateRightVideoPosition(position); }};
 
     // hold the connections for the scrollbar callbacks so we can disable them when

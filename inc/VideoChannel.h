@@ -28,6 +28,12 @@ enum VideoLoadStatus
     VIDEO_LOAD_UNKNOWN_ERROR
 };
 
+enum VideoPlaybackStatus
+{
+    PLAYING,
+    PAUSED
+};
+
 class VideoChannel
 {
   public:
@@ -43,29 +49,46 @@ class VideoChannel
     {
         return m_active_frame;
     }
+    
     const int getStartFrame()
     {
         return m_start_frame;
     }
+    
     const int getEndFrame()
     {
         return m_end_frame;
     }
+    
     const int getFrameCount()
     {
         return m_frame_count;
     }
+    
     const float getVideoPosition()
     {
         return m_video_position;
     }
+    
     const float getFramerateMultiplier()
     {
         return m_framerate_multiplier;
     }
 
+    const VideoPlaybackStatus getPlaybackStatus()
+    {
+        return m_continue_playback ? PLAYING : PAUSED;
+    }
+
     // callbacks for user controls
     void playOrPauseVideo();
+    
+    // Start video playback by kicking off the playback worker thread
+    void playVideo();
+
+    // Stop video playback
+    void pauseVideo();
+
     void stepFrame(int frame_offset);
 
     // callback for user update of slider position
@@ -160,9 +183,6 @@ class VideoChannel
 
     // Function to update the video position
     void updateVideoPosition(float position, bool update_frame);
-
-    // Start video playback by kicking off the playback worker thread
-    const void playVideo();
 };
 
 } // namespace VideoPlayback

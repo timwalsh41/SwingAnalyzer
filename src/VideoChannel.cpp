@@ -128,7 +128,7 @@ const VideoSize VideoChannel::getVideoSize()
     return {m_video_width, m_video_height, m_video_aspect_ratio};
 }
 
-const void VideoChannel::playVideo()
+void VideoChannel::playVideo()
 {
     if (m_active_frame == m_end_frame)
     {
@@ -141,6 +141,11 @@ const void VideoChannel::playVideo()
     m_continue_playback = true;
     std::thread workerThread(&VideoChannel::playVideoWorkerThread, this);
     workerThread.detach();
+}
+
+void VideoChannel::pauseVideo()
+{
+    m_continue_playback = false;
 }
 
 VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)

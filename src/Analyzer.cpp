@@ -4,7 +4,7 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
 {
     m_logger.info("Initializing Analyzer");
 
-    m_pSynchronizer = std::make_unique<VideoPlayback::Synchronizer>(&m_channel_left, &m_channel_right);
+    m_pSynchronizer = std::make_unique<VideoPlayback::Synchronizer>(this, &m_pChannel_left, &m_pChannel_right);
 
     loadGuiObjects();
     setUpGui();
@@ -22,16 +22,16 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
     m_canvas_left->show();
 
     // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNEL
-    m_channel_left.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
-    auto video_size = m_channel_left.getVideoSize();
+    m_pChannel_left.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
+    auto video_size = m_pChannel_left.getVideoSize();
     m_canvas_left->set_size_request(video_size.width, video_size.height);
     
-    m_channel_right.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
-    video_size = m_channel_right.getVideoSize();
+    m_pChannel_right.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
+    video_size = m_pChannel_right.getVideoSize();
     m_canvas_right->set_size_request(video_size.width, video_size.height);
     
-    m_channel_left.playOrPauseVideo();
-    m_channel_right.playOrPauseVideo();
+    m_pChannel_left.playOrPauseVideo();
+    m_pChannel_right.playOrPauseVideo();
 }
 
 Analyzer::~Analyzer()
@@ -96,35 +96,44 @@ void Analyzer::syncModeToggle(bool syncMode)
     m_guiObjects.btnUnloadRightVideo->set_sensitive(syncMode);
     m_guiObjects.lblVideoLeft->set_sensitive(syncMode);
     m_guiObjects.lblVideoRight->set_sensitive(syncMode);
+    m_guiObjects.btnBack1FrameLeft->set_sensitive(syncMode);
+    m_guiObjects.btnBack5FramesLeft->set_sensitive(syncMode);
+    m_guiObjects.btnForward1FrameLeft->set_sensitive(syncMode);
+    m_guiObjects.btnForward5FramesLeft->set_sensitive(syncMode);
+    m_guiObjects.scrollVideoLeft->set_sensitive(syncMode);
+    m_guiObjects.btnBack1FrameRight->set_sensitive(syncMode);
+    m_guiObjects.btnBack5FramesRight->set_sensitive(syncMode);
+    m_guiObjects.btnForward1FrameRight->set_sensitive(syncMode);
+    m_guiObjects.btnForward5FramesRight->set_sensitive(syncMode);
+    m_guiObjects.scrollVideoRight->set_sensitive(syncMode);
 }
 
 void Analyzer::connectSignals()
 {
 
     m_guiObjects.btnPlay->signal_clicked().connect([this]() {
-        this->m_channel_left.playOrPauseVideo();
-        this->m_channel_right.playOrPauseVideo();
+        this->m_pSynchronizer->playOrPauseVideo();
     });
 
-    m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(-5); });
-    m_guiObjects.btnBack1FrameLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(-1); });
-    m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(1); });
-    m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() { this->m_channel_left.stepFrame(5); });
+    m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(-5); });
+    m_guiObjects.btnBack1FrameLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(-1); });
+    m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(1); });
+    m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(5); });
 
-    m_guiObjects.btnBack5FramesRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(-5); });
-    m_guiObjects.btnBack1FrameRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(-1); });
-    m_guiObjects.btnForward1FrameRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(1); });
-    m_guiObjects.btnForward5FramesRight->signal_clicked().connect([this]() { this->m_channel_right.stepFrame(5); });
+    m_guiObjects.btnBack5FramesRight->signal_clicked().connect([this]() { this->m_pChannel_right.stepFrame(-5); });
+    m_guiObjects.btnBack1FrameRight->signal_clicked().connect([this]() { this->m_pChannel_right.stepFrame(-1); });
+    m_guiObjects.btnForward1FrameRight->signal_clicked().connect([this]() { this->m_pChannel_right.stepFrame(1); });
+    m_guiObjects.btnForward5FramesRight->signal_clicked().connect([this]() { this->m_pChannel_right.stepFrame(5); });
 
     m_guiObjects.chkSyncMode->signal_toggled().connect(
         [this]() { this->syncModeToggle(this->m_guiObjects.chkSyncMode->get_active()); });
 
     m_left_channel_scrollbar_connection = m_guiObjects.scrollVideoLeft->signal_value_changed().connect([this]() {
-        this->m_channel_left.setVideoPosition(this->m_guiObjects.scrollVideoLeft->get_value());
+        this->m_pChannel_left.setVideoPosition(this->m_guiObjects.scrollVideoLeft->get_value());
     });
 
     m_right_channel_scrollbar_connection = m_guiObjects.scrollVideoRight->signal_value_changed().connect([this]() {
-        this->m_channel_right.setVideoPosition(this->m_guiObjects.scrollVideoLeft->get_value());
+        this->m_pChannel_right.setVideoPosition(this->m_guiObjects.scrollVideoRight->get_value());
     });
 }
 
@@ -159,14 +168,14 @@ void Analyzer::setUpGui()
         throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find RightVideoBox");
     }
 
-    m_canvas_left->get_root_item()->add_child(m_channel_left.get_image());
-    m_canvas_right->get_root_item()->add_child(m_channel_right.get_image());
+    m_canvas_left->get_root_item()->add_child(m_pChannel_left.get_image());
+    m_canvas_right->get_root_item()->add_child(m_pChannel_right.get_image());
 
     auto left_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
     m_guiObjects.scrollVideoLeft->set_adjustment(left_adjustment);
 
     auto right_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
-    m_guiObjects.scrollVideoLeft->set_adjustment(right_adjustment);
+    m_guiObjects.scrollVideoRight->set_adjustment(right_adjustment);
 }
 
 void Analyzer::loadGuiObjects()
