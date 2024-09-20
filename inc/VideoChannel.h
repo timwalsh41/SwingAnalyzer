@@ -3,6 +3,7 @@
 
 #include <Logger.h>
 #include <Profiler.h>
+#include <VideoPlaybackTypes.h>
 
 #include <glibmm/main.h>
 #include <goocanvasmm.h>
@@ -13,26 +14,6 @@
 
 namespace VideoPlayback
 {
-struct VideoSize
-{
-    int width;
-    int height;
-    float aspectRatio;
-};
-
-enum VideoLoadStatus
-{
-    VIDEO_LOAD_SUCCESS,
-    VIDEO_LOAD_FILE_NOT_FOUND,
-    VIDEO_LOAD_INVALID_TYPE,
-    VIDEO_LOAD_UNKNOWN_ERROR
-};
-
-enum VideoPlaybackStatus
-{
-    PLAYING,
-    PAUSED
-};
 
 class VideoChannel
 {
@@ -59,6 +40,11 @@ class VideoChannel
     {
         return m_end_frame;
     }
+
+    const inline int getEffectiveVideoLengthFrames()
+    {
+        return m_end_frame - m_start_frame + 1;
+    }
     
     const int getFrameCount()
     {
@@ -75,13 +61,27 @@ class VideoChannel
         return m_framerate_multiplier;
     }
 
+    const float getRawFramerate_fps()
+    {
+        return m_frames_per_second;
+    }
+
     const VideoPlaybackStatus getPlaybackStatus()
     {
         return m_continue_playback ? PLAYING : PAUSED;
     }
 
-    // callbacks for user controls
-    void playOrPauseVideo();
+    void enableProfiler()
+    {
+        m_profiler_frame.enableProfiler();
+        m_profiler_image.enableProfiler();
+    }
+
+    void disableProfiler()
+    {
+        m_profiler_frame.disableProfiler();
+        m_profiler_image.disableProfiler();
+    }
     
     // Start video playback by kicking off the playback worker thread
     void playVideo();
@@ -89,6 +89,10 @@ class VideoChannel
     // Stop video playback
     void pauseVideo();
 
+    // Set the video position to the start frame
+    void setVideoToStart();
+
+    // Step video display by a number of frames
     void stepFrame(int frame_offset);
 
     // callback for user update of slider position
@@ -104,6 +108,8 @@ class VideoChannel
     const VideoSize getVideoSize();
     VideoLoadStatus loadVideo(const std::string &videoPath);
     void unloadVideo();
+
+    void registerVideoPlaybackCompleteCallback(std::function<void(std::string&)>);
 
   private:
     // video capture object holds the video data and provides individual frames
@@ -129,7 +135,10 @@ class VideoChannel
     Glib::RefPtr<Goocanvas::Image> m_image;
 
     // callback to Analyzer to update the slider position
-    std::function<void(float)> m_update_video_position_callback;
+    std::function<void(float)> m_update_video_position_callback = nullptr;
+
+    // callback to synchronizer when playback is complete
+    std::function<void(std::string&)> m_video_complete_callback = nullptr;
 
     // Video properties
     float m_frames_per_second;

@@ -28,6 +28,16 @@ class Profiler
     // dump the profiler data to the logger
     void dump();
 
+    void enableProfiler()
+    {
+      m_enabled = true;
+    }
+
+    void disableProfiler()
+    {
+      m_enabled = false;
+    }
+
     double getLastInterval() const
     {
       if (m_v_intervals.empty())
@@ -69,6 +79,9 @@ class Profiler
     // short, so this way we can exclude it from the data analysis
     // we default to true here so that we would not skip by default
     bool m_skipped_first{true};
+
+    // flag to enable profiler output to log
+    bool m_enabled{false};
 
     Logger &m_logger;
 };

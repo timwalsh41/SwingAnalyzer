@@ -23,6 +23,17 @@ include_directories(
         inc
 )
 
-add_executable(swing_analyzer src/main.cpp src/AnalyzerWindow.cpp src/Analyzer.cpp src/Synchronizer.cpp src/VideoChannel.cpp src/Logger.cpp src/Profiler.cpp)
+add_executable(swing_analyzer   src/main.cpp
+                                src/AnalyzerWindow.cpp
+                                src/Analyzer.cpp
+                                src/SyncManager.cpp
+                                src/Synchronizer.cpp
+                                src/SynchronizerStateSync.cpp
+                                src/SynchronizerStateSyncToPlayback.cpp
+                                src/SynchronizerStatePlaybackPaused.cpp
+                                src/SynchronizerStatePlaybackPlaying.cpp
+                                src/VideoChannel.cpp
+                                src/Logger.cpp
+                                src/Profiler.cpp)
 
 target_link_libraries(swing_analyzer ${GTKMM_LIBRARIES} ${GOOCANVASMM_LIBRARIES} ${OpenCV_LIBS})

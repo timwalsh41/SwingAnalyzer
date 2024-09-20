@@ -2,9 +2,11 @@
 
 Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuilder), m_logger{Logger::get()}
 {
+    m_logger.setLogLevel(LogSeverity::DEBUG);
+
     m_logger.info("Initializing Analyzer");
 
-    m_pSynchronizer = std::make_unique<VideoPlayback::Synchronizer>(this, &m_pChannel_left, &m_pChannel_right);
+    m_pSyncManager = std::make_unique<VideoPlayback::SyncManager>(this, &m_pChannel_left, &m_pChannel_right);
 
     loadGuiObjects();
     setUpGui();
@@ -30,8 +32,7 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
     video_size = m_pChannel_right.getVideoSize();
     m_canvas_right->set_size_request(video_size.width, video_size.height);
     
-    m_pChannel_left.playOrPauseVideo();
-    m_pChannel_right.playOrPauseVideo();
+    m_pSyncManager->handleEvent(VideoPlayback::PLAY, VideoPlayback::BOTH_CHANNELS);
 }
 
 Analyzer::~Analyzer()
@@ -80,7 +81,7 @@ void Analyzer::syncModeToggle(bool syncMode)
 {
     m_logger.info("Enabling %s controls", syncMode ? "sync" : "playback");
 
-    m_pSynchronizer->setSyncMode(syncMode);
+    m_pSyncManager->handleEvent(syncMode ? VideoPlayback::SYNC_ON : VideoPlayback::SYNC_OFF, VideoPlayback::NO_CHANNEL);
 
     m_guiObjects.btnGoToStart->set_sensitive(!syncMode);
     m_guiObjects.btnBack5Frames->set_sensitive(!syncMode);
@@ -112,7 +113,7 @@ void Analyzer::connectSignals()
 {
 
     m_guiObjects.btnPlay->signal_clicked().connect([this]() {
-        this->m_pSynchronizer->playOrPauseVideo();
+        this->m_pSyncManager->handleEvent(VideoPlayback::PLAY_OR_PAUSE, VideoPlayback::BOTH_CHANNELS);
     });
 
     m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(-5); });

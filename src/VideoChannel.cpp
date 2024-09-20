@@ -97,6 +97,11 @@ void VideoChannel::playVideoWorkerThread()
     m_profiler_frame.reset();
     m_profiler_image.reset(true);
 
+    if (m_video_complete_callback)
+    {
+        m_video_complete_callback(m_name);
+    }
+
     m_continue_playback = false;
     m_logger.info("Channel %s finished playback", m_name.c_str());
 }
@@ -172,23 +177,13 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
     // TODO: set actual video size...
     setVideoSize(800, 800);
 
+    setVideoToStart();
+
     return VIDEO_LOAD_SUCCESS;
 }
 
 void VideoChannel::unloadVideo()
 {
-}
-
-void VideoChannel::playOrPauseVideo()
-{
-    if (m_continue_playback)
-    {
-        m_continue_playback = false;
-    }
-    else
-    {
-        playVideo();
-    }
 }
 
 void VideoChannel::stepFrame(int frame_offset)
@@ -325,6 +320,16 @@ void VideoChannel::updateVideoPosition(float video_position, bool update_frame)
         // trigger update of slider position in GUI
         m_update_video_position_callback(m_video_position);
     }
+}
+
+void VideoChannel::setVideoToStart()
+{
+    setActiveFrame(m_start_frame);
+}
+
+void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(std::string&)> callback)
+{
+    m_video_complete_callback = callback;
 }
 
 } // namespace VideoPlayback

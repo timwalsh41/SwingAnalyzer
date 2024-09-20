@@ -4,35 +4,32 @@
 #include <VideoChannel.h>
 #include <Logger.h>
 
-class Analyzer;
-
 namespace VideoPlayback
 {
 
-enum VideoSyncMode
-{
-  SYNC,
-  PLAYBACK
-};
-
 class Synchronizer
 {
-  public:
-    Synchronizer(Analyzer *analyzer, VideoChannel *channel_left, VideoChannel *channel_right);
-    ~Synchronizer() = default;
-    
-    void setSyncMode(bool syncMode);
-    void playOrPauseVideo();
+    friend class SyncManager;
+    friend class SynchronizerStateSyncToPlayback;
+    friend class SynchronizerStateSync;
+    friend class SynchronizerStatePlaybackPlaying;
+    friend class SynchronizerStatePlaybackPaused;
 
-  private:
-    VideoSyncMode m_syncMode{SYNC};
+    public:
+        Synchronizer(VideoChannel *channel_left, VideoChannel *channel_right);
+        ~Synchronizer() = default;
 
-    Analyzer *m_pAnalyzer;
-    VideoChannel *m_pChannel_left, *m_pChannel_right;
+    private:
+        VideoChannel *m_pChannel_left, *m_pChannel_right;
+        Logger &m_logger;
 
-    Logger &m_logger;
+        // synchronized video offset (left channel position - right channel position)
+        int m_video_frame_offset{0};
+
+        // flag for continuous playback mode, as selected by user
+        bool m_continuous_playback{false};
 };
 
 } // namespace VideoPlayback
 
-#endif // SYNCHRONIZER_H
+#endif // SYNCHRONIZERIMPL_H

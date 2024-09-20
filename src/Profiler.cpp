@@ -68,6 +68,11 @@ void Profiler::reset(bool skip_first)
 
 void Profiler::dump()
 {
+    if (!m_enabled)
+    {
+        return;
+    }
+    
     if (m_v_durations.empty())
     {
         m_logger.debug("Profiler %s: No duration data", m_name.c_str());

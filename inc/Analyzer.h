@@ -2,7 +2,7 @@
 #define ANALYZER_H
 
 #include <Logger.h>
-#include <Synchronizer.h>
+#include <SyncManager.h>
 #include <VideoChannel.h>
 
 #include <goocanvasmm.h>
@@ -80,7 +80,7 @@ class Analyzer
     sigc::connection m_left_channel_scrollbar_connection, m_right_channel_scrollbar_connection;
 
     // the analyzer owns the synchronizer
-    std::unique_ptr<VideoPlayback::Synchronizer> m_pSynchronizer;
+    std::unique_ptr<VideoPlayback::SyncManager> m_pSyncManager;
 
     // we store the handles to all of our GUI objects in a struct
     AnalyzerGuiObjects m_guiObjects;
