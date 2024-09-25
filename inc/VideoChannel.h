@@ -21,49 +21,110 @@ class VideoChannel
     VideoChannel(const std::string name, std::function<void(float)> m_update_video_position_callback);
     ~VideoChannel();
 
-    const Glib::RefPtr<Goocanvas::Image> &get_image()
+    const Glib::RefPtr<Goocanvas::Image> &GetImage()
     {
         return m_image;
     }
 
+    const bool IsVideoLoaded()
+    {
+        return m_video_loaded;
+    }
+
     const int getActiveFrame()
     {
-        return m_active_frame;
+        if (m_video_loaded)
+        {
+            return m_active_frame;
+        }
+        else
+        {
+            return 0;
+        }
     }
     
     const int getStartFrame()
     {
-        return m_start_frame;
+        if (m_video_loaded)
+        {
+            return m_start_frame;
+        }
+        else
+        {
+            return 0;
+        }
     }
     
     const int getEndFrame()
     {
-        return m_end_frame;
+        if (m_video_loaded)
+        {
+            return m_end_frame;
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     const inline int getEffectiveVideoLengthFrames()
     {
-        return m_end_frame - m_start_frame + 1;
+        if (m_video_loaded)
+        {
+            return m_end_frame - m_start_frame + 1;
+        }
+        else
+        {
+            return 0;
+        }
     }
     
     const int getFrameCount()
     {
-        return m_frame_count;
+        if (m_video_loaded)
+        {
+            return m_frame_count;
+        }
+        else
+        {
+            return 0;
+        }
     }
     
     const float getVideoPosition()
     {
-        return m_video_position;
+        if (m_video_loaded)
+        {
+            return m_video_position;
+        }
+        else
+        {
+            return 0;
+        }
     }
     
     const float getFramerateMultiplier()
     {
-        return m_framerate_multiplier;
+        if (m_video_loaded)
+        {
+            return m_framerate_multiplier;
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     const float getRawFramerate_fps()
     {
-        return m_frames_per_second;
+        if (m_video_loaded)
+        {
+            return m_frames_per_second;
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     const VideoPlaybackStatus getPlaybackStatus()
@@ -91,6 +152,9 @@ class VideoChannel
 
     // Set the video position to the start frame
     void setVideoToStart();
+
+    // Set the video to desired frame
+    void setVideoToFrame(int frame_index);
 
     // Step video display by a number of frames
     void stepFrame(int frame_offset);
@@ -167,6 +231,9 @@ class VideoChannel
 
     // flag to update teh video slider position if needed
     bool m_update_video_position{false};
+
+    // flag to represent if a video is loaded
+    bool m_video_loaded{false};
 
     // framerate multiplier to adjust playback speed
     float m_framerate_multiplier{1};

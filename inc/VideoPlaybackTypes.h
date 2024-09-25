@@ -33,7 +33,15 @@ enum VideoSyncEvent
   PAUSE,
   SYNC_ON,
   SYNC_OFF,
-  PLAYBACK_COMPLETE
+  PLAYBACK_COMPLETE,
+  STEP_FORWARD_LARGE,
+  STEP_BACKWARD_LARGE,
+  STEP_FORWARD_SMALL,
+  STEP_BACKWARD_SMALL,
+  SET_VIDEO_TO_START,
+  PLAYBACK_RATE_UPDATE,
+  VIDEO_POSITION_UPDATE,
+  LOAD_VIDEO
 };
 
 const inline std::unordered_map<VideoSyncEvent, const char*> sync_event_name_map = {

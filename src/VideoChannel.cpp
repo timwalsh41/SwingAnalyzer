@@ -2,6 +2,7 @@
 #include <VideoPlaybackConstants.h>
 
 #include <thread>
+#include <algorithm>
 
 namespace VideoPlayback
 {
@@ -37,7 +38,7 @@ VideoChannel::VideoChannel(const std::string name, std::function<void(float)> m_
 
         if (m_update_video_position)
         {
-            // update video position accordingly
+            // update video position slider accordingly
             updateVideoPosition(static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame),
                                 false);
             m_update_video_position = false;
@@ -73,7 +74,7 @@ void VideoChannel::playVideoWorkerThread()
         m_active_frame = m_video_capture.get(cv::CAP_PROP_POS_FRAMES) - 1;
         m_video_position = static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame);
 
-        // set the internal flag to update video position
+        // set the internal flag to update video position slider
         m_update_video_position = true;
 
         if (frame.empty())
@@ -108,6 +109,11 @@ void VideoChannel::playVideoWorkerThread()
 
 void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     if (availableHeight < 10 || availableWidth < 10)
     {
         m_logger.error("Invalid video size for %s video: %d x %d", m_name.c_str(), availableWidth, availableHeight);
@@ -130,11 +136,23 @@ void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
 
 const VideoSize VideoChannel::getVideoSize()
 {
-    return {m_video_width, m_video_height, m_video_aspect_ratio};
+    if (m_video_loaded)
+    {
+        return {m_video_width, m_video_height, m_video_aspect_ratio};
+    }
+    else
+    {
+        return {0, 0, 0};
+    }
 }
 
 void VideoChannel::playVideo()
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     if (m_active_frame == m_end_frame)
     {
         m_active_frame = m_start_frame;
@@ -163,6 +181,8 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
         return VIDEO_LOAD_UNKNOWN_ERROR;
     }
 
+    m_video_loaded = true;
+
     m_video_capture >> m_frame;
     m_video_aspect_ratio = static_cast<float>(m_frame.cols) / static_cast<float>(m_frame.rows);
     m_frames_per_second = m_video_capture.get(cv::CAP_PROP_FPS);
@@ -176,7 +196,6 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
 
     // TODO: set actual video size...
     setVideoSize(800, 800);
-
     setVideoToStart();
 
     return VIDEO_LOAD_SUCCESS;
@@ -184,10 +203,16 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
 
 void VideoChannel::unloadVideo()
 {
+    m_video_loaded = false;
 }
 
 void VideoChannel::stepFrame(int frame_offset)
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     if (frame_offset == 0)
     {
         return;
@@ -196,10 +221,9 @@ void VideoChannel::stepFrame(int frame_offset)
     int new_frame = m_active_frame + frame_offset;
     if (new_frame < m_start_frame || new_frame > m_end_frame)
     {
-        m_logger.warn(
-            "Invalid frame step, current active frame is %d, step %d results in frame index %d, valid range is (%d,%d)",
-            m_active_frame, frame_offset, new_frame, m_start_frame, m_end_frame);
-        return;
+        m_logger.info(
+            "Clamping step size to not exceed video bounds");
+        new_frame = std::clamp(new_frame, m_start_frame, m_end_frame);
     }
 
     m_logger.debug("Stepping %s channel frame from %d to %d", m_name.c_str(), m_active_frame, new_frame);
@@ -207,7 +231,7 @@ void VideoChannel::stepFrame(int frame_offset)
     // stepping the frame will halt playback if active
     m_continue_playback = false;
 
-    // this will require a video position update
+    // this will require a video position slider update
     m_update_video_position = true;
 
     setActiveFrame(new_frame);
@@ -215,6 +239,11 @@ void VideoChannel::stepFrame(int frame_offset)
 
 void VideoChannel::setActiveFrame(int frame_index)
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     if (frame_index < m_start_frame || frame_index > m_end_frame)
     {
         m_logger.warn("Invalid frame index for active frame: %d, valid range is (%d,%d)", frame_index, m_start_frame,
@@ -236,6 +265,11 @@ void VideoChannel::setActiveFrame(int frame_index)
 
 void VideoChannel::setStartFrame(int frame_index)
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     if (frame_index < 0 || frame_index >= m_end_frame)
     {
         m_logger.debug("Invalid frame index for start frame: %d, valid range is (%d,%d)", frame_index, 0,
@@ -251,6 +285,11 @@ void VideoChannel::setStartFrame(int frame_index)
 
 void VideoChannel::setEndFrame(int frame_index)
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     if (frame_index <= m_start_frame || frame_index >= m_frame_count)
     {
         m_logger.warn("Invalid frame index for end frame: %d, valid range is (%d,%d)", frame_index, m_start_frame + 1,
@@ -266,6 +305,11 @@ void VideoChannel::setEndFrame(int frame_index)
 
 void VideoChannel::setVideoPosition(float video_position)
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     if (video_position < 0 || video_position > 1)
     {
         m_logger.warn("Invalid video position %.3f, valid range is (0.0,1.0)", video_position);
@@ -324,7 +368,23 @@ void VideoChannel::updateVideoPosition(float video_position, bool update_frame)
 
 void VideoChannel::setVideoToStart()
 {
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
     setActiveFrame(m_start_frame);
+}
+
+void VideoChannel::setVideoToFrame(int frame_index)
+{
+    if (!m_video_loaded)
+    {
+        return;
+    }
+
+    // note that we check the value of frame_index in setActiveFrame
+    setActiveFrame(frame_index);
 }
 
 void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(std::string&)> callback)

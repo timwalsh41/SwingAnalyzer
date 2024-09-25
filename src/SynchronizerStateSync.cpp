@@ -1,6 +1,14 @@
 #include <SynchronizerStateSync.h>
 #include <SynchronizerStateSyncToPlayback.h>
 
+/*
+In the SYNC state, the user can control the videos individually to adjust the timing for synchronized
+playback. There are individual adjustment controls (frame step & slider), and the single play/pause
+button for both channels. The individual controls are routed directly to the video channels since no
+synchronization is required. The play/pause button is handled by the synchronizer, as well as the 
+transition to the SYNC_TO_PLAYBACK state when sync mode is deselected.
+*/
+
 namespace VideoPlayback
 {
     SynchronizerStateSync::SynchronizerStateSync(Synchronizer* synchronizer) : ISynchronizerState("SYNC", synchronizer)
@@ -14,9 +22,11 @@ namespace VideoPlayback
         {
             case SYNC_ON:
             case TICK:
+                // no action
                 return nullptr;
 
             case SYNC_OFF:
+                // move to SYNC_TO_PLAYBACK state
                 return std::make_unique<SynchronizerStateSyncToPlayback>(m_pSynchronizer);
 
             case PLAY:
@@ -37,12 +47,18 @@ namespace VideoPlayback
                 return nullptr;
 
             case PAUSE:
+                // Pause both channels regardless of playback status
                 m_pSynchronizer->m_pChannel_left->pauseVideo();
                 m_pSynchronizer->m_pChannel_right->pauseVideo();
 
                 return nullptr;
 
+            case LOAD_VIDEO:
+                m_pSynchronizer->calculateFramerateRatio();
+                return nullptr;
+
             default:
+                // we shouldn't get any events other than the above
                 m_logger.warn("Unhandled event from SYNC state on channel(s) %s: %s", 
                     channel_name_map.at(channel), sync_event_name_map.at(event));
                 return nullptr;

@@ -15,6 +15,10 @@ constexpr float MAX_FRAMERATE_MULTIPLIER =
     1 / (*std::min_element(playback_rates_array.begin(), playback_rates_array.end()));
 constexpr float MIN_FRAMERATE_MULTIPLIER =
     1 / (*std::max_element(playback_rates_array.begin(), playback_rates_array.end()));
+
+// frame step sizes for playback mode
+constexpr int FRAME_STEP_SMALL = 1;
+constexpr int FRAME_STEP_LARGE = 5;
 } // namespace VideoPlayback
 
 #endif // VIDEO_PLAYBACK_CONSTANTS_H

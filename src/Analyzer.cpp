@@ -32,6 +32,11 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
     video_size = m_pChannel_right.getVideoSize();
     m_canvas_right->set_size_request(video_size.width, video_size.height);
     
+    // we need to signal to the sync manager that we've loaded a new video in order to update
+    // the playback rate
+    m_pSyncManager->handleEvent(VideoPlayback::LOAD_VIDEO, VideoPlayback::BOTH_CHANNELS);
+
+    // and we'll start playback
     m_pSyncManager->handleEvent(VideoPlayback::PLAY, VideoPlayback::BOTH_CHANNELS);
 }
 
@@ -41,10 +46,24 @@ Analyzer::~Analyzer()
 
 void Analyzer::loadLeftVideo()
 {
+    // TODO: load video via dialog box
+
+    // Update video filename text label
+
+    // we need to signal to the sync manager that we've loaded a new video in order to update
+    // the playback rate
+    m_pSyncManager->handleEvent(VideoPlayback::LOAD_VIDEO, VideoPlayback::LEFT_CHANNEL);
 }
 
 void Analyzer::loadRightVideo()
 {
+    // TODO: load video via dialog box
+
+    // Update video filename text label
+    
+    // we need to signal to the sync manager that we've loaded a new video in order to update
+    // the playback rate
+    m_pSyncManager->handleEvent(VideoPlayback::LOAD_VIDEO, VideoPlayback::RIGHT_CHANNEL);
 }
 
 void Analyzer::updateLeftVideoPosition(float video_position)
@@ -111,11 +130,16 @@ void Analyzer::syncModeToggle(bool syncMode)
 
 void Analyzer::connectSignals()
 {
-
+    // Universal play/pause button
     m_guiObjects.btnPlay->signal_clicked().connect([this]() {
         this->m_pSyncManager->handleEvent(VideoPlayback::PLAY_OR_PAUSE, VideoPlayback::BOTH_CHANNELS);
     });
 
+    // Sync mode select box
+    m_guiObjects.chkSyncMode->signal_toggled().connect(
+        [this]() { this->syncModeToggle(this->m_guiObjects.chkSyncMode->get_active()); });
+
+    // Sync mode individual video controls
     m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(-5); });
     m_guiObjects.btnBack1FrameLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(-1); });
     m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() { this->m_pChannel_left.stepFrame(1); });
@@ -125,10 +149,7 @@ void Analyzer::connectSignals()
     m_guiObjects.btnBack1FrameRight->signal_clicked().connect([this]() { this->m_pChannel_right.stepFrame(-1); });
     m_guiObjects.btnForward1FrameRight->signal_clicked().connect([this]() { this->m_pChannel_right.stepFrame(1); });
     m_guiObjects.btnForward5FramesRight->signal_clicked().connect([this]() { this->m_pChannel_right.stepFrame(5); });
-
-    m_guiObjects.chkSyncMode->signal_toggled().connect(
-        [this]() { this->syncModeToggle(this->m_guiObjects.chkSyncMode->get_active()); });
-
+    
     m_left_channel_scrollbar_connection = m_guiObjects.scrollVideoLeft->signal_value_changed().connect([this]() {
         this->m_pChannel_left.setVideoPosition(this->m_guiObjects.scrollVideoLeft->get_value());
     });
@@ -136,6 +157,18 @@ void Analyzer::connectSignals()
     m_right_channel_scrollbar_connection = m_guiObjects.scrollVideoRight->signal_value_changed().connect([this]() {
         this->m_pChannel_right.setVideoPosition(this->m_guiObjects.scrollVideoRight->get_value());
     });
+
+    // Playback mode joint controls
+    m_guiObjects.btnBack1Frame->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::BOTH_CHANNELS);});
+    m_guiObjects.btnForward1Frame->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::BOTH_CHANNELS);});
+    m_guiObjects.btnBack5Frames->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::BOTH_CHANNELS);});
+    m_guiObjects.btnForward5Frames->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::BOTH_CHANNELS);});
+    m_guiObjects.btnGoToStart->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::SET_VIDEO_TO_START, VideoPlayback::BOTH_CHANNELS);});
 }
 
 void Analyzer::setUpGui()
@@ -169,8 +202,8 @@ void Analyzer::setUpGui()
         throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find RightVideoBox");
     }
 
-    m_canvas_left->get_root_item()->add_child(m_pChannel_left.get_image());
-    m_canvas_right->get_root_item()->add_child(m_pChannel_right.get_image());
+    m_canvas_left->get_root_item()->add_child(m_pChannel_left.GetImage());
+    m_canvas_right->get_root_item()->add_child(m_pChannel_right.GetImage());
 
     auto left_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
     m_guiObjects.scrollVideoLeft->set_adjustment(left_adjustment);
