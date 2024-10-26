@@ -91,18 +91,6 @@ class VideoChannel
         }
     }
     
-    const float getVideoPosition()
-    {
-        if (m_video_loaded)
-        {
-            return m_video_position;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    
     const float getFramerateMultiplier()
     {
         if (m_video_loaded)
@@ -159,8 +147,6 @@ class VideoChannel
     // Step video display by a number of frames
     void stepFrame(int frame_offset);
 
-    // callback for user update of slider position
-    void setVideoPosition(float video_position);
     void setFramerateMultiplier(float framerate_multiplier);
 
     // functions to manipulate active range of video, used by
@@ -179,8 +165,13 @@ class VideoChannel
     // video capture object holds the video data and provides individual frames
     cv::VideoCapture m_video_capture;
 
-    // the Mat object holds the data for the current frame
-    cv::Mat m_frame{};
+    // the Mat object holds the data for the current frame, this is used for thread-safe
+    // updating of the frame
+    cv::Mat m_frame_buffer{};
+
+    // the display frame object holds the data for the current frame for updating the canvas
+    // image in the main thread
+    cv::Mat m_display_frame{};
 
     // the pixbuf object holds non-video data, e.g. a blank frame to display before
     // the video is loaded
@@ -215,10 +206,6 @@ class VideoChannel
     // current displayed frame, this will be kept in sync with the video position
     int m_active_frame{0};
 
-    // video position as a proportion of the range between the start frame and end frame, this will be kept in
-    // sync with the active frame
-    float m_video_position{0};
-
     // active range of frames
     int m_start_frame{0};
     int m_end_frame{0};
@@ -228,9 +215,6 @@ class VideoChannel
 
     // flag to continue playback in worker thread
     bool m_continue_playback{false};
-
-    // flag to update teh video slider position if needed
-    bool m_update_video_position{false};
 
     // flag to represent if a video is loaded
     bool m_video_loaded{false};
@@ -250,15 +234,12 @@ class VideoChannel
     // Directly set the video frame for display
     void setActiveFrame(int frame_index);
 
-    // Function to update the display for the active frame
-    void updateDisplayedFrame(const cv::Mat &frame);
+    // Transfer the display frame to the canvas image
+    void updatePixBuf();
 
     // Function for the video playback worker thread that processes the video frames
     // and updates the pixbuf for display on the canvas
     void playVideoWorkerThread();
-
-    // Function to update the video position
-    void updateVideoPosition(float position, bool update_frame);
 };
 
 } // namespace VideoPlayback

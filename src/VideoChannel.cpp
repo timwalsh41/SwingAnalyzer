@@ -20,30 +20,18 @@ VideoChannel::VideoChannel(const WhichVideoChannel channel, std::function<void(i
     // our dispatcher will trigger the update of the canvas image pixbuf
     // the dispatcher is triggered by the worker thread
     m_dispatcher.connect([this]() {
-        cv::Mat resized_frame;
-        cv::Mat rgb_frame;
-
         m_profiler_image.tick();
 
+        // thread safe copy of frame buffer into display frame
         {
             std::lock_guard<std::mutex> lock(m_frameMutex);
-            cv::resize(m_frame, resized_frame, cv::Size(m_video_width, m_video_height));
+            cv::resize(m_frame_buffer, m_display_frame, cv::Size(m_video_width, m_video_height));
         }
 
-        cv::cvtColor(resized_frame, rgb_frame, cv::COLOR_BGR2RGB);
-        m_pixbuf = Gdk::Pixbuf::create_from_data(rgb_frame.data, Gdk::COLORSPACE_RGB, false, 8, rgb_frame.cols,
-                                                rgb_frame.rows, rgb_frame.step);
+        updatePixBuf();
 
-
-        m_image->property_pixbuf() = m_pixbuf;
-
-        if (m_update_video_position)
-        {
-            // update video position slider accordingly
-            updateVideoPosition(static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame),
-                                false);
-            m_update_video_position = false;
-        }
+        // update video position slider accordingly
+        m_update_video_position_callback(m_active_frame, m_channel_id);
 
         m_profiler_image.tock();
     });
@@ -73,10 +61,6 @@ void VideoChannel::playVideoWorkerThread()
         // frame to be captured next, we will subtract one here to reflect the frame
         // we are currently processing
         m_active_frame = m_video_capture.get(cv::CAP_PROP_POS_FRAMES) - 1;
-        m_video_position = static_cast<float>(m_active_frame - m_start_frame) / (m_end_frame - m_start_frame);
-
-        // set the internal flag to update video position slider
-        m_update_video_position = true;
 
         if (frame.empty())
         {
@@ -84,7 +68,14 @@ void VideoChannel::playVideoWorkerThread()
         }
         else
         {
-            updateDisplayedFrame(frame);
+            // thread safe copy of the new frame into the frame buffer
+            {
+                std::lock_guard<std::mutex> lock(m_frameMutex);
+                m_frame_buffer = frame.clone();
+            }
+
+            // trigger the dispatcher to update the canvas image
+            m_dispatcher.emit();
         }
 
         // TODO: figure out what's happening here...
@@ -115,6 +106,17 @@ void VideoChannel::playVideoWorkerThread()
 
     m_continue_playback = false;
     m_logger.info("Channel %s finished playback", channel_name_map.at(m_channel_id));
+}
+
+void VideoChannel::updatePixBuf()
+{
+    cv::Mat rgb_frame;
+
+    cv::cvtColor(m_display_frame, rgb_frame, cv::COLOR_BGR2RGB);
+    m_pixbuf = Gdk::Pixbuf::create_from_data(rgb_frame.data, Gdk::COLORSPACE_RGB, false, 8, rgb_frame.cols,
+                                            rgb_frame.rows, rgb_frame.step);
+
+    m_image->property_pixbuf() = m_pixbuf;
 }
 
 void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
@@ -193,15 +195,16 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
 
     m_video_loaded = true;
 
-    m_video_capture >> m_frame;
-    m_video_aspect_ratio = static_cast<float>(m_frame.cols) / static_cast<float>(m_frame.rows);
+    // load a frame to get the video size
+    m_video_capture >> m_display_frame;
+    m_video_aspect_ratio = static_cast<float>(m_display_frame.cols) / static_cast<float>(m_display_frame.rows);
     m_frames_per_second = m_video_capture.get(cv::CAP_PROP_FPS);
     m_frame_count = m_video_capture.get(cv::CAP_PROP_FRAME_COUNT);
     m_start_frame = 0;
     m_end_frame = m_frame_count - 1;
 
     m_logger.info("Loaded %s channel video %s with size %d x %d (AR=%.2f), framerate %.2f, and %d frames",
-                  channel_name_map.at(m_channel_id), videoPath.c_str(), m_frame.cols, m_frame.rows, m_video_aspect_ratio,
+                  channel_name_map.at(m_channel_id), videoPath.c_str(), m_display_frame.cols, m_display_frame.rows, m_video_aspect_ratio,
                   m_frames_per_second, m_frame_count);
 
     // TODO: set actual video size...
@@ -241,10 +244,10 @@ void VideoChannel::stepFrame(int frame_offset)
     // stepping the frame will halt playback if active
     m_continue_playback = false;
 
-    // this will require a video position slider update
-    m_update_video_position = true;
-
     setActiveFrame(new_frame);
+
+    // this will require a video position slider update
+    m_update_video_position_callback(m_active_frame, m_channel_id);
 }
 
 void VideoChannel::setActiveFrame(int frame_index)
@@ -270,7 +273,11 @@ void VideoChannel::setActiveFrame(int frame_index)
     cv::Mat frame;
     m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
     m_video_capture >> frame;
-    updateDisplayedFrame(frame);
+    cv::resize(frame, m_display_frame, cv::Size(m_video_width, m_video_height));
+
+    // we now have the new frame loaded into m_display_frame, so trigger the canvas
+    // image update
+    updatePixBuf();
 }
 
 void VideoChannel::setStartFrame(int frame_index)
@@ -319,34 +326,6 @@ void VideoChannel::setEndFrame(int frame_index)
     m_continue_playback = false;
 }
 
-void VideoChannel::setVideoPosition(float video_position)
-{
-    if (!m_video_loaded)
-    {
-        return;
-    }
-
-    if (video_position < 0 || video_position > 1)
-    {
-        m_logger.warn("Invalid video position %.3f, valid range is (0.0,1.0)", video_position);
-        return;
-    }
-
-    updateVideoPosition(video_position, true);
-}
-
-void VideoChannel::updateDisplayedFrame(const cv::Mat &frame)
-{
-    // we lock here as this function can be called from the worker thread
-    {
-        std::lock_guard<std::mutex> lock(m_frameMutex);
-        m_frame = frame.clone();
-    }
-
-    // emit this dispatcher signal to trigger the update of the canvas image
-    m_dispatcher.emit();
-}
-
 void VideoChannel::setFramerateMultiplier(float framerate_multiplier)
 {
     if (framerate_multiplier > MAX_FRAMERATE_MULTIPLIER || framerate_multiplier < MIN_FRAMERATE_MULTIPLIER)
@@ -359,30 +338,6 @@ void VideoChannel::setFramerateMultiplier(float framerate_multiplier)
     // stop playback if we update the framerate
     m_continue_playback = false;
     m_framerate_multiplier = framerate_multiplier;
-}
-
-void VideoChannel::updateVideoPosition(float video_position, bool update_frame)
-{
-    m_video_position = video_position;
-
-    if (update_frame)
-    {
-        // we will stop playback if the frame is set directly
-        m_continue_playback = false;
-        int new_frame = m_start_frame + static_cast<int>(m_video_position * (m_end_frame - m_start_frame));
-
-        // make sure we don't trigger a subsequent video position update
-        m_update_video_position = false;
-        setActiveFrame(new_frame);
-    }
-    else
-    {
-        // trigger update of slider position in GUI
-        if (m_update_video_position_callback)
-        {
-            m_update_video_position_callback(m_active_frame, m_channel_id);
-        }
-    }
 }
 
 void VideoChannel::setVideoToStart()
@@ -401,9 +356,6 @@ void VideoChannel::setVideoToFrame(int frame_index)
     {
         return;
     }
-
-    // we do not want this call to trigger a slider position update
-    m_update_video_position = false;
 
     // note that we check the value of frame_index in setActiveFrame
     setActiveFrame(frame_index);
