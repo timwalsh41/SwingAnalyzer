@@ -47,8 +47,9 @@ namespace VideoPlayback
                 return nullptr;
 
             case VIDEO_POSITION_UPDATE:
-                // Position update from slider
-                
+                // Trigger the video position update, note that the video position is loaded
+                // by the sync manager from the GUI callback
+                m_pSynchronizer->videoPositionUpdate();
                 return nullptr;
 
             case PLAYBACK_RATE_UPDATE:

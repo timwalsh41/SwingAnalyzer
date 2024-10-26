@@ -82,5 +82,7 @@
         "-I/usr/include/c++/11",
         "-I/usr/include/glibmm-2.4",
         "-I/usr/include/goocanvas-2.0"
-    ]
+    ],
+    "plantuml.server": "http://localhost:8080",
+    "plantuml.render": "PlantUMLServer"
 }

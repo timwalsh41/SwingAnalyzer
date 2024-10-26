@@ -18,7 +18,7 @@ namespace VideoPlayback
 class VideoChannel
 {
   public:
-    VideoChannel(const std::string name, std::function<void(float)> m_update_video_position_callback);
+    VideoChannel(const WhichVideoChannel channel, std::function<void(int,WhichVideoChannel)> update_video_position_callback);
     ~VideoChannel();
 
     const Glib::RefPtr<Goocanvas::Image> &GetImage()
@@ -173,7 +173,7 @@ class VideoChannel
     VideoLoadStatus loadVideo(const std::string &videoPath);
     void unloadVideo();
 
-    void registerVideoPlaybackCompleteCallback(std::function<void(std::string&)>);
+    void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)>);
 
   private:
     // video capture object holds the video data and provides individual frames
@@ -198,11 +198,11 @@ class VideoChannel
     // the image object is the Goocanvas object that displays the video frames on the canvas
     Glib::RefPtr<Goocanvas::Image> m_image;
 
-    // callback to Analyzer to update the slider position
-    std::function<void(float)> m_update_video_position_callback = nullptr;
+    // callback to synchronizer to update the slider position
+    std::function<void(int,WhichVideoChannel)> m_update_video_position_callback = nullptr;
 
     // callback to synchronizer when playback is complete
-    std::function<void(std::string&)> m_video_complete_callback = nullptr;
+    std::function<void(WhichVideoChannel)> m_video_complete_callback = nullptr;
 
     // Video properties
     float m_frames_per_second;
@@ -239,11 +239,11 @@ class VideoChannel
     float m_framerate_multiplier{1};
 
     // Name of channel
-    std::string m_name;
+    WhichVideoChannel m_channel_id;
 
     // We will profile the frame capture and image update operations
-    Utility::Profiler m_profiler_frame{m_name + "VideoChannelFrameProfiler"};
-    Utility::Profiler m_profiler_image{m_name + "VideoChannelImageProfiler"};
+    Utility::Profiler m_profiler_frame{std::string(channel_name_map.at(m_channel_id)) + "VideoChannelFrameProfiler"};
+    Utility::Profiler m_profiler_image{std::string(channel_name_map.at(m_channel_id)) + "VideoChannelImageProfiler"};
 
     Logger &m_logger;
 

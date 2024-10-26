@@ -20,7 +20,6 @@ namespace VideoPlayback
     {
         switch(event)
         {
-            case SYNC_ON:
             case TICK:
                 // no action
                 return nullptr;
@@ -51,6 +50,21 @@ namespace VideoPlayback
                 m_pSynchronizer->m_pChannel_left->pauseVideo();
                 m_pSynchronizer->m_pChannel_right->pauseVideo();
 
+                return nullptr;
+
+            case VIDEO_POSITION_UPDATE:
+                // This event occurs when the user moves the video position slider in the GUI. Trigger 
+                // the video position update, note that the video position is loaded by the sync manager
+                // from the GUI callback
+                m_pSynchronizer->videoPositionUpdate();
+                
+                return nullptr;
+
+            case VIDEO_FRAME_UPDATE:
+                // This event occurs when a video channel updates the currently displayed frame
+                // during playback; we need to pass this through to the synchronizer to update the
+                // scollbar position on the analyzer
+                m_pSynchronizer->videoFrameUpdate(channel, false);
                 return nullptr;
 
             case LOAD_VIDEO:

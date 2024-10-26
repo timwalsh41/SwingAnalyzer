@@ -40,7 +40,8 @@ enum VideoSyncEvent
   STEP_BACKWARD_SMALL,
   SET_VIDEO_TO_START,
   PLAYBACK_RATE_UPDATE,
-  VIDEO_POSITION_UPDATE,
+  VIDEO_POSITION_UPDATE,    // Position updated by user dragging slider
+  VIDEO_FRAME_UPDATE,       // Frame step by video channel during playback
   LOAD_VIDEO
 };
 
@@ -51,7 +52,16 @@ const inline std::unordered_map<VideoSyncEvent, const char*> sync_event_name_map
     {VideoSyncEvent::PAUSE, "pause"},
     {VideoSyncEvent::SYNC_ON, "sync_on"},
     {VideoSyncEvent::SYNC_OFF, "sync_off"},
-    {VideoSyncEvent::PLAYBACK_COMPLETE, "playback_complete"}
+    {VideoSyncEvent::PLAYBACK_COMPLETE, "playback_complete"},
+    {VideoSyncEvent::STEP_FORWARD_LARGE, "step_forward_large"},
+    {VideoSyncEvent::STEP_BACKWARD_LARGE, "step_backward_large"},
+    {VideoSyncEvent::STEP_FORWARD_SMALL, "step_forward_small"},
+    {VideoSyncEvent::STEP_BACKWARD_SMALL, "step_backward_small"},
+    {VideoSyncEvent::SET_VIDEO_TO_START, "set_video_to_start"},
+    {VideoSyncEvent::PLAYBACK_RATE_UPDATE, "playback_rate_update"},
+    {VideoSyncEvent::VIDEO_POSITION_UPDATE, "video_position_update"},
+    {VideoSyncEvent::VIDEO_FRAME_UPDATE, "video_frame_update"},
+    {VideoSyncEvent::LOAD_VIDEO, "load_video"}
 };
 
 enum WhichVideoChannel

@@ -57,7 +57,18 @@ namespace VideoPlayback
                 return std::make_unique<SynchronizerStatePlaybackPaused>(m_pSynchronizer);
 
             case VIDEO_POSITION_UPDATE:
+                // This event occurs when the user moves the video position slider in the GUI. Trigger 
+                // the video position update, note that the video position is loaded by the sync manager
+                // from the GUI callback
+                m_pSynchronizer->videoPositionUpdate();
                 return std::make_unique<SynchronizerStatePlaybackPaused>(m_pSynchronizer);
+
+            case VIDEO_FRAME_UPDATE:
+                // This event occurs when a video channel updates the currently displayed frame
+                // during playback; we need to pass this through to the synchronizer to update the
+                // scollbar position on the analyzer
+                m_pSynchronizer->videoFrameUpdate(channel, true);
+                return nullptr;
 
             case PLAYBACK_RATE_UPDATE:
                 return nullptr;

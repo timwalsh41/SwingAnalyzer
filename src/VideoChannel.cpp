@@ -7,8 +7,8 @@
 namespace VideoPlayback
 {
 
-VideoChannel::VideoChannel(const std::string name, std::function<void(float)> m_update_video_position_callback)
-    : m_name{name}, m_logger{Logger::get()}, m_update_video_position_callback{m_update_video_position_callback}
+VideoChannel::VideoChannel(const WhichVideoChannel channel, std::function<void(int,WhichVideoChannel)> update_video_position_callback)
+    : m_channel_id{channel}, m_logger{Logger::get()}, m_update_video_position_callback{update_video_position_callback}
 {
     m_pixbuf = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 100);
     m_image = Goocanvas::Image::create(m_pixbuf, 0, 0);
@@ -58,7 +58,7 @@ void VideoChannel::playVideoWorkerThread()
 
     m_frame_time_us = 1 / m_framerate_multiplier / m_frames_per_second * 1e6;
 
-    m_logger.info("Starting playback of %s channel video with frame time %.2f ms", m_name.c_str(),
+    m_logger.info("Starting playback of %s channel video with frame time %.2f ms", channel_name_map.at(m_channel_id),
                   m_frame_time_us / 1000);
 
     // grab the first frame
@@ -79,7 +79,7 @@ void VideoChannel::playVideoWorkerThread()
 
         if (frame.empty())
         {
-            m_logger.warn("Frame %d is empty for %s channel, not updating frame", m_active_frame, m_name.c_str());
+            m_logger.warn("Frame %d is empty for %s channel, not updating frame", m_active_frame, channel_name_map.at(m_channel_id));
         }
         else
         {
@@ -100,11 +100,11 @@ void VideoChannel::playVideoWorkerThread()
 
     if (m_video_complete_callback)
     {
-        m_video_complete_callback(m_name);
+        m_video_complete_callback(m_channel_id);
     }
 
     m_continue_playback = false;
-    m_logger.info("Channel %s finished playback", m_name.c_str());
+    m_logger.info("Channel %s finished playback", channel_name_map.at(m_channel_id));
 }
 
 void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
@@ -116,7 +116,7 @@ void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
 
     if (availableHeight < 10 || availableWidth < 10)
     {
-        m_logger.error("Invalid video size for %s video: %d x %d", m_name.c_str(), availableWidth, availableHeight);
+        m_logger.error("Invalid video size for %s video: %d x %d", channel_name_map.at(m_channel_id), availableWidth, availableHeight);
         return;
     }
 
@@ -131,7 +131,7 @@ void VideoChannel::setVideoSize(int availableHeight, int availableWidth)
         m_video_width = static_cast<float>(availableHeight) * m_video_aspect_ratio;
     }
 
-    m_logger.info("Set %s channel video size to %d x %d", m_name.c_str(), m_video_width, m_video_height);
+    m_logger.info("Set %s channel video size to %d x %d", channel_name_map.at(m_channel_id), m_video_width, m_video_height);
 }
 
 const VideoSize VideoChannel::getVideoSize()
@@ -157,7 +157,7 @@ void VideoChannel::playVideo()
     {
         m_active_frame = m_start_frame;
         m_video_capture.set(cv::CAP_PROP_POS_FRAMES, m_active_frame);
-        m_logger.info("Reset %s channel video playback to start", m_name.c_str());
+        m_logger.info("Reset %s channel video playback to start", channel_name_map.at(m_channel_id));
     }
 
     // start our worker thread to process the video frames
@@ -191,7 +191,7 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string &videoPath)
     m_end_frame = m_frame_count - 1;
 
     m_logger.info("Loaded %s channel video %s with size %d x %d (AR=%.2f), framerate %.2f, and %d frames",
-                  m_name.c_str(), videoPath.c_str(), m_frame.cols, m_frame.rows, m_video_aspect_ratio,
+                  channel_name_map.at(m_channel_id), videoPath.c_str(), m_frame.cols, m_frame.rows, m_video_aspect_ratio,
                   m_frames_per_second, m_frame_count);
 
     // TODO: set actual video size...
@@ -226,7 +226,7 @@ void VideoChannel::stepFrame(int frame_offset)
         new_frame = std::clamp(new_frame, m_start_frame, m_end_frame);
     }
 
-    m_logger.debug("Stepping %s channel frame from %d to %d", m_name.c_str(), m_active_frame, new_frame);
+    m_logger.debug("Stepping %s channel frame from %d to %d", channel_name_map.at(m_channel_id), m_active_frame, new_frame);
 
     // stepping the frame will halt playback if active
     m_continue_playback = false;
@@ -362,7 +362,10 @@ void VideoChannel::updateVideoPosition(float video_position, bool update_frame)
     else
     {
         // trigger update of slider position in GUI
-        m_update_video_position_callback(m_video_position);
+        if (m_update_video_position_callback)
+        {
+            m_update_video_position_callback(m_active_frame, m_channel_id);
+        }
     }
 }
 
@@ -383,11 +386,14 @@ void VideoChannel::setVideoToFrame(int frame_index)
         return;
     }
 
+    // we do not want this call to trigger a slider position update
+    m_update_video_position = false;
+
     // note that we check the value of frame_index in setActiveFrame
     setActiveFrame(frame_index);
 }
 
-void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(std::string&)> callback)
+void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback)
 {
     m_video_complete_callback = callback;
 }
