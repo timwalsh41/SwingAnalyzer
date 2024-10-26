@@ -2,6 +2,7 @@
 #include <Analyzer.h>
 
 #include <algorithm>
+#include <iostream>
 
 namespace VideoPlayback
 {
@@ -11,21 +12,21 @@ namespace VideoPlayback
 
     }
 
-    void Synchronizer::setVideosToStartPosition()
+    void Synchronizer::clearStartAndEndFrames()
     {
-        if (m_video_frame_offset > 0)
-        {
-            m_pChannel_left->setVideoToFrame(m_pChannel_left->getStartFrame() + m_video_frame_offset);
-            m_pChannel_right->setVideoToStart();
-        }
-        else
-        {
-            m_pChannel_left->setVideoToStart();
-            m_pChannel_right->setVideoToFrame(m_pChannel_right->getStartFrame() - m_video_frame_offset);
-        }
+        m_pChannel_left->setStartFrame(0);
+        m_pChannel_left->setEndFrame(-1);
+        m_pChannel_right->setStartFrame(0);
+        m_pChannel_right->setEndFrame(-1);
     }
 
-    void Synchronizer::setVideoChannelOffset()
+    void Synchronizer::setVideosToStartPosition()
+    {
+        m_pChannel_right->setVideoToStart();
+        m_pChannel_left->setVideoToStart();
+    }
+
+    void Synchronizer::setupVideoSync()
     {
         m_video_frame_offset = (m_pChannel_left->getActiveFrame() - m_pChannel_left->getStartFrame()) -
                                (m_pChannel_right->getActiveFrame() - m_pChannel_right->getStartFrame());
@@ -37,6 +38,19 @@ namespace VideoPlayback
         else
         {
             m_pChannel_right->setStartFrame(m_pChannel_right->getStartFrame() - m_video_frame_offset);
+        }
+
+        m_left_length = m_pChannel_left->getEndFrame() - m_pChannel_left->getStartFrame();
+        m_right_length = m_pChannel_right->getEndFrame() - m_pChannel_right->getStartFrame();
+        m_combined_length = std::min(m_left_length, m_right_length);
+
+        if (m_left_length < m_right_length)
+        {
+            m_video_position_update_channel = LEFT_CHANNEL;
+        }
+        else
+        {
+            m_video_position_update_channel = RIGHT_CHANNEL;
         }
     }
 
@@ -76,7 +90,7 @@ namespace VideoPlayback
         m_pChannel_right->pauseVideo();
     }
 
-    void Synchronizer::videoPositionUpdate()
+    void Synchronizer::videoPositionUpdate(WhichVideoChannel channel)
     {
         if (m_new_video_position < 0 || m_new_video_position > 1)
         {
@@ -84,33 +98,44 @@ namespace VideoPlayback
             return;
         }
 
-        int left_length, right_length, combined_length, left_frame, right_frame;
+        int left_frame, right_frame;
 
-        if (m_video_frame_offset > 0)
-        {
-            left_length = m_pChannel_left->getEndFrame() - m_pChannel_left->getStartFrame() - m_video_frame_offset;
-            right_length = m_pChannel_right->getEndFrame() - m_pChannel_right->getStartFrame();
-            combined_length = std::min(left_length, right_length);
-            left_frame = m_pChannel_left->getStartFrame() + m_video_frame_offset + static_cast<int>(m_new_video_position * combined_length);
-            right_frame = m_pChannel_right->getStartFrame() + static_cast<int>(m_new_video_position * combined_length);
-        }
-        else
-        {
-            left_length = m_pChannel_left->getEndFrame() - m_pChannel_left->getStartFrame();
-            right_length = m_pChannel_right->getEndFrame() - m_pChannel_right->getStartFrame() + m_video_frame_offset;
-            combined_length = std::min(left_length, right_length);
-            left_frame = m_pChannel_left->getStartFrame() + static_cast<int>(m_new_video_position * combined_length);
-            right_frame = m_pChannel_right->getStartFrame() - m_video_frame_offset + static_cast<int>(m_new_video_position * combined_length);
-        }
+        left_frame = m_pChannel_left->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
+        right_frame = m_pChannel_right->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
 
-        m_pChannel_left->setVideoToFrame(left_frame);
-        m_pChannel_right->setVideoToFrame(right_frame);
+        switch(channel)
+        {
+            case LEFT_CHANNEL:
+                m_pChannel_left->setVideoToFrame(left_frame);
+                break;
+            
+            case RIGHT_CHANNEL:
+                m_pChannel_right->setVideoToFrame(right_frame);
+                break;
+
+            case BOTH_CHANNELS:
+                m_pChannel_left->setVideoToFrame(left_frame);
+                m_pChannel_right->setVideoToFrame(right_frame);
+                break;
+
+            default:
+                m_logger.warn("Synchronizer: received video position update without channel selected");
+                break;
+        }
     }
 
     void Synchronizer::videoFrameUpdate(WhichVideoChannel channel, bool update_joint_slider)
     {
         float new_position;
+        int video_length;
         VideoChannel* pChannel;
+
+        if (channel != m_video_position_update_channel && update_joint_slider)
+        {
+            // we only update the slider for one channel in playback mode (e.g. when updating the
+            // joint slider)
+            return;
+        }
         
         if (channel == WhichVideoChannel::LEFT_CHANNEL)
         {
@@ -121,11 +146,23 @@ namespace VideoPlayback
             pChannel = m_pChannel_right;
         }
 
-        new_position = static_cast<float>(pChannel->getActiveFrame() - pChannel->getStartFrame()) 
-                        / (pChannel->getEndFrame() - pChannel->getStartFrame());
+        video_length = pChannel->getEndFrame() - pChannel->getStartFrame();
+
+        if (video_length == 0)
+        {
+            new_position = 0.;
+            m_logger.warn("Synchronizer::videoFrameUpdate: video length is zero, setting position to 0");
+            
+        }
+        else
+        {
+            new_position = static_cast<float>(pChannel->getActiveFrame() - pChannel->getStartFrame()) 
+                            / (pChannel->getEndFrame() - pChannel->getStartFrame());
+        }
 
         if  (update_joint_slider)
         {
+            std::cout << "Slider update " << channel_name_map.at(channel) << " " << pChannel->getActiveFrame() << "/" << pChannel->getEndFrame() << " = " << new_position << "\n";
             m_pAnalyzer->updateCombinedVideoPosition(new_position);
         }
         else

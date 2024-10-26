@@ -12,9 +12,11 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
     setUpGui();
     connectSignals();
 
+    m_pSyncManager->start();
+
     // by default we'll start in sync mode
-    syncModeToggle(true);
     m_guiObjects.chkSyncMode->set_active(true);
+    syncModeToggle(true);
 
     // TODO: TEMPORARY TEST CODE TO ADD AN ANNOTATION ON THE LEFT CANVAS
     auto rect = Goocanvas::Rect::create(250, 400, 100, 100);

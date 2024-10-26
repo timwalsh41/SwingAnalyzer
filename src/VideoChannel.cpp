@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <algorithm>
+#include <iostream>
 
 namespace VideoPlayback
 {
@@ -86,7 +87,16 @@ void VideoChannel::playVideoWorkerThread()
             updateDisplayedFrame(frame);
         }
 
-        m_video_capture >> frame;
+        // TODO: figure out what's happening here...
+        try
+        {
+            m_video_capture >> frame;
+        }
+        catch (cv::Exception &e)
+        {
+            m_logger.error("Error reading frame %d from %s channel video: %s", m_active_frame, channel_name_map.at(m_channel_id), e.what());
+            std::cout << "Error reading frame " << m_active_frame << " from " << channel_name_map.at(m_channel_id) << ": " << e.what() << "\n";
+        }
 
         m_profiler_frame.tock();
 
@@ -290,17 +300,23 @@ void VideoChannel::setEndFrame(int frame_index)
         return;
     }
 
-    if (frame_index <= m_start_frame || frame_index >= m_frame_count)
+    if (frame_index == -1)
+    {
+        m_end_frame = m_frame_count - 1;
+    }
+    else if (frame_index <= m_start_frame || frame_index >= m_frame_count)
     {
         m_logger.warn("Invalid frame index for end frame: %d, valid range is (%d,%d)", frame_index, m_start_frame + 1,
                       m_frame_count - 1);
         return;
     }
+    else
+    {
+        m_end_frame = frame_index;
+    }
 
     // we will stop playback if the frame is set directly
     m_continue_playback = false;
-
-    m_end_frame = frame_index;
 }
 
 void VideoChannel::setVideoPosition(float video_position)

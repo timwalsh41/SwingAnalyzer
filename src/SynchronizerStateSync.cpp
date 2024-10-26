@@ -13,6 +13,14 @@ namespace VideoPlayback
 {
     SynchronizerStateSync::SynchronizerStateSync(Synchronizer* synchronizer) : ISynchronizerState("SYNC", synchronizer)
     {
+        // we'll clear out the offset once we go back into SYNC mode
+        m_pSynchronizer->m_video_frame_offset = 0;
+        m_pSynchronizer->clearStartAndEndFrames();
+
+        // and make sure the scroll bars are set correctly
+        m_pSynchronizer->videoFrameUpdate(LEFT_CHANNEL, false);
+        m_pSynchronizer->videoFrameUpdate(RIGHT_CHANNEL, false);
+
         m_logger.debug("SyncManager: entering state SYNC");
     }
 
@@ -56,8 +64,8 @@ namespace VideoPlayback
                 // This event occurs when the user moves the video position slider in the GUI. Trigger 
                 // the video position update, note that the video position is loaded by the sync manager
                 // from the GUI callback
-                m_pSynchronizer->videoPositionUpdate();
-                
+                m_pSynchronizer->videoPositionUpdate(channel);
+
                 return nullptr;
 
             case VIDEO_FRAME_UPDATE:

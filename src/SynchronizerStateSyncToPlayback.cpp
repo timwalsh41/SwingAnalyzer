@@ -1,5 +1,6 @@
 #include <SynchronizerStateSyncToPlayback.h>
 #include <SynchronizerStatePlaybackPaused.h>
+#include <Analyzer.h>
 
 /*
 The SYNC_TO_PLAYBACK state exists only to lock in the video channel offset as we transition from sync
@@ -14,10 +15,13 @@ namespace VideoPlayback
         m_logger.debug("SyncManager: entering state SYNCTOPLAYBACK");
 
         // on state entry we update the offset between the left and right channel
-        m_pSynchronizer->setVideoChannelOffset();
+        m_pSynchronizer->setupVideoSync();
 
         // we'll set both videos to the start frame to be ready to play
         m_pSynchronizer->setVideosToStartPosition();
+
+        // and move the scrollbar to the zero position
+        m_pSynchronizer->m_pAnalyzer->updateCombinedVideoPosition(0.0);
 
         m_logger.debug("SyncManager: updating video channel offset to %d", m_pSynchronizer->m_video_frame_offset);
     }

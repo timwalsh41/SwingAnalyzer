@@ -164,7 +164,7 @@ class VideoChannel
     void setFramerateMultiplier(float framerate_multiplier);
 
     // functions to manipulate active range of video, used by
-    // synchronizer
+    // synchronizer; pass end_frame = -1 to set to end of video
     void setStartFrame(int start_frame);
     void setEndFrame(int end_frame);
 

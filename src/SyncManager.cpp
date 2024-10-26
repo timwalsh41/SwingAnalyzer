@@ -9,8 +9,6 @@ namespace VideoPlayback
     SyncManager::SyncManager(Analyzer *analyzer) :
         m_pAnalyzer(analyzer), m_synchronizer(analyzer, &m_channel_left, &m_channel_right), m_logger(Logger::get())
     {
-        m_state = std::make_unique<SynchronizerStateSync>(&m_synchronizer);
-
         m_channel_left.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
         m_channel_right.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
 
@@ -26,6 +24,11 @@ namespace VideoPlayback
         
         m_channel_right.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
         // video_size = m_channel_right.getVideoSize();
+    }
+
+    void SyncManager::start()
+    {
+        m_state = std::make_unique<SynchronizerStateSync>(&m_synchronizer);
     }
 
     void SyncManager::handleEvent(VideoSyncEvent event, WhichVideoChannel channel)

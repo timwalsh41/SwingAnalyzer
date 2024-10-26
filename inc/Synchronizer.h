@@ -34,6 +34,13 @@ class Synchronizer
         // framerate ratio, left video framerate divided by right video framerate
         float m_framerate_ratio{1.0};
 
+        // effective length of the left and right video channels, including user selected
+        // start/end frame and offset
+        int m_left_length{0}, m_right_length{0};
+        
+        // the combined length is the shorter of the right and left channels
+        int m_combined_length{0};
+
         // flag for continuous playback mode, as selected by user
         bool m_continuous_playback{false};
 
@@ -45,13 +52,24 @@ class Synchronizer
         // update callback
         int m_new_active_frame{0};
 
+        // when running in playback mode, we'll use the frame update from only one channel
+        // to trigger updates to the slider; we'll set the appropriate channel upon transition
+        // from sync to playback mode
+        WhichVideoChannel m_video_position_update_channel{NO_CHANNEL};
+
         // set both videos to the start position, e.g. the start frame for each, with
         // the offset applied
         void setVideosToStartPosition();
 
-        // set the offset between the two video channels based on the start frame for
-        // each and the current active frame
-        void setVideoChannelOffset();
+        // set the playback parameters for the synced videos:
+        // - offset between the two video channels
+        // - start and end frames for both video channels
+        // - playback length
+        // - which channel to use for slider updates
+        void setupVideoSync();
+
+        // clear the start and end frames for both video channels
+        void clearStartAndEndFrames();
 
         // calculate the framerate ratio for the two channels
         void calculateFramerateRatio();
@@ -63,7 +81,7 @@ class Synchronizer
 
         // Receive video position update, for updating video position based on
         // joint slider position
-        void videoPositionUpdate();
+        void videoPositionUpdate(WhichVideoChannel channel);
 
         // Receive video frame update, for updating the GUI sliders on video channel
         // frame update during playback

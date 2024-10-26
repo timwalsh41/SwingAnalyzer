@@ -20,6 +20,9 @@ class SyncManager
     // general event handler for synchronizer state machine
     void handleEvent(VideoSyncEvent event, WhichVideoChannel channel);
 
+    // start the Synchronizer state machine
+    void start();
+
     // Receive video position update from GUI slider
     // Could be for individual video channel (e.g. in sync mode) or
     // both channels (e.g. in playback mode)

@@ -29,6 +29,7 @@ namespace VideoPlayback
                 // One video should still be playing, make sure it's paused
                 m_pSynchronizer->pauseVideos();
                 m_pSynchronizer->setVideosToStartPosition();
+                m_pSynchronizer->videoFrameUpdate(LEFT_CHANNEL, true);
                 return std::make_unique<SynchronizerStatePlaybackPaused>(m_pSynchronizer);
 
             case STEP_FORWARD_LARGE:
@@ -60,7 +61,7 @@ namespace VideoPlayback
                 // This event occurs when the user moves the video position slider in the GUI. Trigger 
                 // the video position update, note that the video position is loaded by the sync manager
                 // from the GUI callback
-                m_pSynchronizer->videoPositionUpdate();
+                m_pSynchronizer->videoPositionUpdate(BOTH_CHANNELS);
                 return std::make_unique<SynchronizerStatePlaybackPaused>(m_pSynchronizer);
 
             case VIDEO_FRAME_UPDATE:

@@ -49,7 +49,7 @@ namespace VideoPlayback
             case VIDEO_POSITION_UPDATE:
                 // Trigger the video position update, note that the video position is loaded
                 // by the sync manager from the GUI callback
-                m_pSynchronizer->videoPositionUpdate();
+                m_pSynchronizer->videoPositionUpdate(BOTH_CHANNELS);
                 return nullptr;
 
             case PLAYBACK_RATE_UPDATE:
