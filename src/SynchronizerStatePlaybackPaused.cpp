@@ -52,6 +52,13 @@ namespace VideoPlayback
                 m_pSynchronizer->videoPositionUpdate(BOTH_CHANNELS);
                 return nullptr;
 
+            case VIDEO_FRAME_UPDATE:
+                // This event occurs when a video channel updates the currently displayed frame
+                // during playback; we need to pass this through to the synchronizer to update the
+                // scollbar position on the analyzer
+                m_pSynchronizer->videoFrameUpdate(channel, true);
+                return nullptr;
+
             case PLAYBACK_RATE_UPDATE:
                 // User adjusts playback rate
 

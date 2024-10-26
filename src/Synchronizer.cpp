@@ -67,6 +67,9 @@ namespace VideoPlayback
 
     void Synchronizer::stepVideos(int step_size)
     {
+        // Here we pass the step command on to the video channels, note that the frame
+        // updates within the channels will trigger the scrollbar update
+
         float step_size_left, step_size_right;
 
         if (m_framerate_ratio > 1)

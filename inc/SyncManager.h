@@ -36,7 +36,8 @@ class SyncManager
     VideoChannel* getRightChannel() { return &m_channel_right; }
 
   private:
-    // the sync manager owns the video channels
+    // the sync manager owns the video channels; in the constructor we provide the callback
+    // for the video frame update to update the slider position
     VideoPlayback::VideoChannel m_channel_left{WhichVideoChannel::LEFT_CHANNEL,
                                                [this](int active_frame, WhichVideoChannel channel) { this->videoFrameUpdate(active_frame, channel); }};
     VideoPlayback::VideoChannel m_channel_right{WhichVideoChannel::RIGHT_CHANNEL,
