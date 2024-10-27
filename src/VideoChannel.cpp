@@ -19,7 +19,7 @@ VideoChannel::VideoChannel(const WhichVideoChannel channel, std::function<void(i
 
     // our dispatcher will trigger the update of the canvas image pixbuf
     // the dispatcher is triggered by the worker thread
-    m_dispatcher.connect([this]() {
+    m_frame_update_dispatcher.connect([this]() {
         m_profiler_image.tick();
 
         // thread safe copy of frame buffer into display frame
@@ -34,6 +34,13 @@ VideoChannel::VideoChannel(const WhichVideoChannel channel, std::function<void(i
         m_update_video_position_callback(m_active_frame, m_channel_id);
 
         m_profiler_image.tock();
+    });
+
+    m_playback_complete_dispatcher.connect([this]() {
+        if (m_video_complete_callback)
+        {
+            m_video_complete_callback(m_channel_id);
+        }
     });
 }
 
@@ -75,7 +82,7 @@ void VideoChannel::playVideoWorkerThread()
             }
 
             // trigger the dispatcher to update the canvas image
-            m_dispatcher.emit();
+            m_frame_update_dispatcher.emit();
         }
 
         // TODO: figure out what's happening here...
@@ -99,10 +106,7 @@ void VideoChannel::playVideoWorkerThread()
     m_profiler_frame.reset();
     m_profiler_image.reset(true);
 
-    if (m_video_complete_callback)
-    {
-        m_video_complete_callback(m_channel_id);
-    }
+    m_playback_complete_dispatcher.emit();
 
     m_continue_playback = false;
     m_logger.info("Channel %s finished playback", channel_name_map.at(m_channel_id));

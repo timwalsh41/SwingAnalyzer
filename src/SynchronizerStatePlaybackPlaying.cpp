@@ -29,7 +29,7 @@ namespace VideoPlayback
                 // One video should still be playing, make sure it's paused
                 m_pSynchronizer->pauseVideos();
                 m_pSynchronizer->setVideosToStartPosition();
-                m_pSynchronizer->videoFrameUpdate(LEFT_CHANNEL, true);
+                m_pSynchronizer->videoFrameUpdate(m_pSynchronizer->m_video_position_update_channel, true);
                 return std::make_unique<SynchronizerStatePlaybackPaused>(m_pSynchronizer);
 
             case STEP_FORWARD_LARGE:

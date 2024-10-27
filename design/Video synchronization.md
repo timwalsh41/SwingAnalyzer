@@ -21,9 +21,9 @@ SyncToPlayback: Set sync parameters
 
 PlaybackPaused --> PlaybackPlaying: Play button
 
-PlaybackPlaying --> PlaybackPaused : Pause, step frame, or slider drag
+PlaybackPlaying --> PlaybackPaused : Pause, step frame,\nor slider drag
 
-PlaybackPlaying --> Sync : Sync mode selected
+PlaybackPlaying --> Sync : Sync mode\nselected
 
 PlaybackPaused --> Sync: Sync mode selected
 

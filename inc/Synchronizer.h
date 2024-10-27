@@ -79,7 +79,7 @@ class Synchronizer
         // out of bounds
         void stepVideos(int step_size);
 
-        // Receive video position update, for updating video position based on
+        // Receive video position update from GUI, for updating displayed video frame based on
         // joint slider position
         void videoPositionUpdate(WhichVideoChannel channel);
 

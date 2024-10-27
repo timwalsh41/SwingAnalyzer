@@ -177,9 +177,13 @@ class VideoChannel
     // the video is loaded
     Glib::RefPtr<Gdk::Pixbuf> m_pixbuf;
 
-    // the dispatcher object is used for the video playback worker thread to signal to
+    // the frame update dispatcher object is used for the video playback worker thread to signal to
     // the main thread to update the pixbuf
-    Glib::Dispatcher m_dispatcher;
+    Glib::Dispatcher m_frame_update_dispatcher;
+
+    // the playback complete dispatcher object is used for the video playback worker thread to signal to
+    // the main thread that playback is complete
+    Glib::Dispatcher m_playback_complete_dispatcher;
 
     // this mutex is used to protect the active frame data, which is updated with the latest frame
     // from the video capture in the video playback thread, and read from the main thread to update 

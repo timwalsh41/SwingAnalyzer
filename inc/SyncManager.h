@@ -54,15 +54,6 @@ class SyncManager
     Analyzer *m_pAnalyzer;
     Synchronizer m_synchronizer;
 
-    // the dispatcher emits a signal to indicate when playback is complete on one of the
-    // video channels
-    std::atomic<WhichVideoChannel> m_playback_complete_channel{WhichVideoChannel::NO_CHANNEL};
-    std::atomic<WhichVideoChannel> m_video_frame_update_channel{WhichVideoChannel::NO_CHANNEL};
-    std::atomic<int> m_video_active_frame{0};
-
-    Glib::Dispatcher m_video_complete_dispatcher;
-    Glib::Dispatcher m_video_frame_update_dispatcher;
-
     Logger &m_logger;
 };
 

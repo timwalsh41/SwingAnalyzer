@@ -12,12 +12,6 @@ namespace VideoPlayback
         m_channel_left.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
         m_channel_right.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
 
-        m_video_complete_dispatcher.connect([this]{handleEvent(PLAYBACK_COMPLETE, m_playback_complete_channel.load());});
-        m_video_frame_update_dispatcher.connect([this]{
-            this->m_synchronizer.m_new_active_frame = m_video_active_frame.load();
-            handleEvent(VIDEO_FRAME_UPDATE, m_video_frame_update_channel.load());
-        });
-
         // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNEL
         m_channel_left.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
         // auto video_size = m_channel_left.getVideoSize();
@@ -61,28 +55,21 @@ namespace VideoPlayback
         handleEvent(VIDEO_POSITION_UPDATE, channel);
     } 
 
-    // Thread-safe playback complete callback. This can be invoked by either video channel, so we use an atomic
-    // to capture the source channel and then emit a signal via our dispatcher to then handle the event in the main
-    // thread.
+    // Playback complete callback, triggered from either video channel, we hand off to the state machine
+    // to handle the event
     void SyncManager::videoPlaybackCompleteCallback(WhichVideoChannel source_channel)
     {
-        if (source_channel == LEFT_CHANNEL || source_channel == RIGHT_CHANNEL)
-        {
-            m_playback_complete_channel.store(source_channel);
-            m_video_complete_dispatcher.emit();
-        }
+        handleEvent(PLAYBACK_COMPLETE, source_channel);
     }
 
-    // Thread-safe video position update callback. This is invoked by the video channels as they progress through
-    // their frames during playback. We will pass this signal on to the analyzer to update the position of the 
-    // appropriate scrollbar
+    // Video position update callback, this is invoked by the video channels as they progress through
+    // their frames during playback; we pass this on to the state machine to handle the event
     void SyncManager::videoFrameUpdate(int active_frame, WhichVideoChannel source_channel)
     {
         if ((source_channel == LEFT_CHANNEL || source_channel == RIGHT_CHANNEL) && active_frame > 0)
         {
-            m_video_frame_update_channel.store(source_channel);
-            m_video_active_frame.store(active_frame);
-            m_video_frame_update_dispatcher.emit();
+            this->m_synchronizer.m_new_active_frame = active_frame;
+            handleEvent(VIDEO_FRAME_UPDATE, source_channel);
         }
     }
 
