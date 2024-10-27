@@ -101,22 +101,30 @@ namespace VideoPlayback
             return;
         }
 
-        int left_frame, right_frame;
+        int left_frame{0}, right_frame{0}, left_video_length{0}, right_video_length{0};
 
-        left_frame = m_pChannel_left->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
-        right_frame = m_pChannel_right->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
-
+        // Which channel we handle, and how we handle it, will depend on the state
+        // - In sync state, we'll get left or right frame, and we'll simply set the video
+        //   to the frame corresponding to the video position between the start and end frame
+        // - In playback mode, both videos must respect the combined length, so we'll calculate
+        //   the frame for each based on that
         switch(channel)
         {
             case LEFT_CHANNEL:
+                left_video_length = m_pChannel_left->getEndFrame() - m_pChannel_left->getStartFrame();
+                left_frame = m_pChannel_left->getStartFrame() + static_cast<int>(m_new_video_position * left_video_length);
                 m_pChannel_left->setVideoToFrame(left_frame);
                 break;
             
             case RIGHT_CHANNEL:
+                right_video_length = m_pChannel_right->getEndFrame() - m_pChannel_right->getStartFrame();
+                right_frame = m_pChannel_right->getStartFrame() + static_cast<int>(m_new_video_position * right_video_length);
                 m_pChannel_right->setVideoToFrame(right_frame);
                 break;
 
             case BOTH_CHANNELS:
+                left_frame = m_pChannel_left->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
+                right_frame = m_pChannel_right->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
                 m_pChannel_left->setVideoToFrame(left_frame);
                 m_pChannel_right->setVideoToFrame(right_frame);
                 break;
