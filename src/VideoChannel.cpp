@@ -3,7 +3,6 @@
 
 #include <thread>
 #include <algorithm>
-#include <iostream>
 
 namespace VideoPlayback
 {
@@ -93,7 +92,6 @@ void VideoChannel::playVideoWorkerThread()
         catch (cv::Exception &e)
         {
             m_logger.error("Error reading frame %d from %s channel video: %s", m_active_frame, channel_name_map.at(m_channel_id), e.what());
-            std::cout << "Error reading frame " << m_active_frame << " from " << channel_name_map.at(m_channel_id) << ": " << e.what() << "\n";
         }
 
         m_profiler_frame.tock();

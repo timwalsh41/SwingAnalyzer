@@ -2,7 +2,6 @@
 #include <Analyzer.h>
 
 #include <algorithm>
-#include <iostream>
 
 namespace VideoPlayback
 {
@@ -173,7 +172,6 @@ namespace VideoPlayback
 
         if  (update_joint_slider)
         {
-            std::cout << "Slider update " << channel_name_map.at(channel) << " " << pChannel->getActiveFrame() << "/" << pChannel->getEndFrame() << " = " << new_position << "\n";
             m_pAnalyzer->updateCombinedVideoPosition(new_position);
         }
         else
