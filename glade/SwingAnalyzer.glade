@@ -470,7 +470,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkComboBox" id="ComboPlaybackRate">
+              <object class="GtkComboBoxText" id="ComboPlaybackRate">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
               </object>

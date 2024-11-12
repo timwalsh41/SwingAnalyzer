@@ -1,4 +1,8 @@
 #include <Analyzer.h>
+#include <VideoPlaybackConstants.h>
+
+#include <sstream>
+#include <iomanip>
 
 Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuilder), m_logger{Logger::get()}
 {
@@ -24,7 +28,7 @@ Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuil
     rect->property_line_width() = 6;
     m_canvas_left->get_root_item()->add_child(rect);
     m_canvas_left->show();
-    
+
     // TEMPORARY TEST CODE
     // WORKS WITH TEMPORARY TEST CODE IN SYNCMANAGER TO LOAD VIDEOS
     // SET VIDEO SIZE AND THEN START PLAYBACK
@@ -59,7 +63,7 @@ void Analyzer::loadRightVideo()
     // TODO: load video via dialog box
 
     // Update video filename text label
-    
+
     // we need to signal to the sync manager that we've loaded a new video in order to update
     // the playback rate
     m_pSyncManager->handleEvent(VideoPlayback::LOAD_VIDEO, VideoPlayback::RIGHT_CHANNEL);
@@ -121,7 +125,6 @@ void Analyzer::syncModeToggle(bool syncMode)
     m_guiObjects.btnForward1Frame->set_sensitive(!syncMode);
     m_guiObjects.btnForward5Frames->set_sensitive(!syncMode);
     m_guiObjects.scrollVideo->set_sensitive(!syncMode);
-    m_guiObjects.comboPlaybackRate->set_sensitive(!syncMode);
 
     m_guiObjects.btnLoadLeftVideo->set_sensitive(syncMode);
     m_guiObjects.btnUnloadLeftVideo->set_sensitive(syncMode);
@@ -144,49 +147,71 @@ void Analyzer::syncModeToggle(bool syncMode)
 void Analyzer::connectSignals()
 {
     // Universal play/pause button
-    m_guiObjects.btnPlay->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::PLAY_OR_PAUSE, VideoPlayback::BOTH_CHANNELS);
-    });
+    m_guiObjects.btnPlay->signal_clicked().connect(
+        [this]() { this->m_pSyncManager->handleEvent(VideoPlayback::PLAY_OR_PAUSE, VideoPlayback::BOTH_CHANNELS); });
 
     // Sync mode select box
     m_guiObjects.chkSyncMode->signal_toggled().connect(
         [this]() { this->syncModeToggle(this->m_guiObjects.chkSyncMode->get_active()); });
 
     // Sync mode individual video controls
-    m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() { this->m_pSyncManager->getLeftChannel()->stepFrame(-5); });
-    m_guiObjects.btnBack1FrameLeft->signal_clicked().connect([this]() { this->m_pSyncManager->getLeftChannel()->stepFrame(-1); });
-    m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() { this->m_pSyncManager->getLeftChannel()->stepFrame(1); });
-    m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() { this->m_pSyncManager->getLeftChannel()->stepFrame(5); });
+    m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::LEFT_CHANNEL);
+    });
+    m_guiObjects.btnBack1FrameLeft->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::LEFT_CHANNEL);
+    });
+    m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::LEFT_CHANNEL);
+    });
+    m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::LEFT_CHANNEL);
+    });
 
-    m_guiObjects.btnBack5FramesRight->signal_clicked().connect([this]() { this->m_pSyncManager->getRightChannel()->stepFrame(-5); });
-    m_guiObjects.btnBack1FrameRight->signal_clicked().connect([this]() { this->m_pSyncManager->getRightChannel()->stepFrame(-1); });
-    m_guiObjects.btnForward1FrameRight->signal_clicked().connect([this]() { this->m_pSyncManager->getRightChannel()->stepFrame(1); });
-    m_guiObjects.btnForward5FramesRight->signal_clicked().connect([this]() { this->m_pSyncManager->getRightChannel()->stepFrame(5); });
-    
+    m_guiObjects.btnBack5FramesRight->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::RIGHT_CHANNEL);
+    });
+    m_guiObjects.btnBack1FrameRight->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::RIGHT_CHANNEL);
+    });
+    m_guiObjects.btnForward1FrameRight->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::RIGHT_CHANNEL);
+    });
+    m_guiObjects.btnForward5FramesRight->signal_clicked().connect([this]() {
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::RIGHT_CHANNEL);
+    });
+
     m_left_channel_scrollbar_connection = m_guiObjects.scrollVideoLeft->signal_value_changed().connect([this]() {
-        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideoLeft->get_value(), VideoPlayback::LEFT_CHANNEL);
+        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideoLeft->get_value(),
+                                                  VideoPlayback::LEFT_CHANNEL);
     });
 
     m_right_channel_scrollbar_connection = m_guiObjects.scrollVideoRight->signal_value_changed().connect([this]() {
-        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideoRight->get_value(), VideoPlayback::RIGHT_CHANNEL);
+        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideoRight->get_value(),
+                                                  VideoPlayback::RIGHT_CHANNEL);
     });
 
     m_dual_channel_scrollbar_connection = m_guiObjects.scrollVideo->signal_value_changed().connect([this]() {
-        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideo->get_value(), VideoPlayback::BOTH_CHANNELS);
+        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideo->get_value(),
+                                                  VideoPlayback::BOTH_CHANNELS);
     });
-
 
     // Playback mode joint controls
     m_guiObjects.btnBack1Frame->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::BOTH_CHANNELS);});
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::BOTH_CHANNELS);
+    });
     m_guiObjects.btnForward1Frame->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::BOTH_CHANNELS);});
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::BOTH_CHANNELS);
+    });
     m_guiObjects.btnBack5Frames->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::BOTH_CHANNELS);});
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::BOTH_CHANNELS);
+    });
     m_guiObjects.btnForward5Frames->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::BOTH_CHANNELS);});
+        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::BOTH_CHANNELS);
+    });
     m_guiObjects.btnGoToStart->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::SET_VIDEO_TO_START, VideoPlayback::BOTH_CHANNELS);});
+        this->m_pSyncManager->handleEvent(VideoPlayback::SET_VIDEO_TO_START, VideoPlayback::BOTH_CHANNELS);
+    });
 }
 
 void Analyzer::setUpGui()
@@ -231,6 +256,19 @@ void Analyzer::setUpGui()
 
     auto dual_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
     m_guiObjects.scrollVideo->set_adjustment(dual_adjustment);
+
+    // Populate the playback rate option combo box
+    for (float rate : VideoPlayback::playback_rates_array)
+    {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << rate << "x";
+        m_guiObjects.comboPlaybackRate->append(oss.str());
+    }
+
+    m_guiObjects.comboPlaybackRate->set_active_text("1.00x");
+    m_guiObjects.comboPlaybackRate->signal_changed().connect([this]() {
+        return;
+    })
 }
 
 void Analyzer::loadGuiObjects()

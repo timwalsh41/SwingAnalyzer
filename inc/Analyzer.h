@@ -33,7 +33,7 @@ struct AnalyzerGuiObjects
     Gtk::Scrollbar *scrollVideo;
 
     // Playback rate combo box
-    Gtk::ComboBox *comboPlaybackRate;
+    Gtk::ComboBoxText *comboPlaybackRate;
 
     // Sync mode check box
     Gtk::CheckButton *chkSyncMode;

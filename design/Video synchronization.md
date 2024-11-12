@@ -45,24 +45,24 @@ PlaybackPaused --> Sync: Sync mode selected
 
 The table below describes the events handled by the state machine. Each event includes a channel selection (left, right, both, or none). There may also be data associated with the event that is processed through the sync manager.
 
-| Event | Description | Associated data |
-|-------|-------------|-----------------|
-| `TICK` | Artificially injected event after each state transition | N/A |
-| `PLAY_OR_PAUSE` | Request to play (if paused) or pause (if playing) video(s) | N/A |
-| `PLAY` | Request to play video(s) | N/A |
-| `PAUSE` | Request to pause video(s) | N/A |
-| `SYNC_ON` | Request to enter sync mode | N/A |
-| `SYNC_OFF` | Request to enter playback mode | N/A |
-| `PLAYBACK_COMPLETE` | Video channel indicating playback is complete | N/A |
-| `STEP_FORWARD_LARGE` | Request to step video(s) forward by 5 frames | N/A |
-| `STEP_FORWARD_SMALL` | Request to step video(s) forward by 1 frame | N/A |
-| `STEP_BACKWARD_LARGE` | Request to step video(s) backward by 5 frames | N/A|
-| `STEP_BACKWARD_SMALL` | Request to step video(s) backward by 1 frame | N/A |
-| `SET_VIDEO_TO_START` | Request to set video(s) to start position | N/A |
-| `PLAYBACK_RATE_UPDATE` | Request to update the playback rate | Desired playback rate multiplier |
-| `VIDEO_POSITION_UPDATE` | Request to set the video to desired position | Float position between 0.0 (start) and 1.0 (end) |
-| `VIDEO_FRAME_UPDATE` | Video channel playback has stepped forward by one frame | Integer frame index |
-| `LOAD_VIDEO` | Request to load a new video file | Path of video file to load |
+| Event | Description | Associated data | Handling in sync mode | Handling in playback mode |
+|-------|-------------|-----------------|-----------------------|---------------------------|
+| `TICK` | Artificially injected event after each state transition | N/A | Calculate sync parameters | N/A |
+| `PLAY_OR_PAUSE` | Request to play (if paused) or pause (if playing) video(s) | N/A | If both channels are paused, then play both, otherwise pause both | Pause videos if playing, and vice versa |
+| `PLAY` | Request to play video(s) | N/A | Play both video channels | Play both video channels |
+| `PAUSE` | Request to pause video(s) | N/A | Pause both video channels | Pause both video channels |
+| `SYNC_ON` | Request to enter sync mode | N/A | N/A | Transition to sync mode |
+| `SYNC_OFF` | Request to enter playback mode | N/A | Transition to playback mode (via `SyncToPlayback`) | N/A |
+| `PLAYBACK_COMPLETE` | Video channel indicating playback is complete | N/A | Do nothing (videos will start from beginning on next playback) | Restore videos to start position and pause |
+| `STEP_FORWARD_LARGE` | Request to step video(s) forward by 5 frames | N/A | Pause playback and step video | Pause playback and step videos |
+| `STEP_FORWARD_SMALL` | Request to step video(s) forward by 1 frame | N/A | Pause playback and step video | Pause playback and step videos |
+| `STEP_BACKWARD_LARGE` | Request to step video(s) backward by 5 frames | N/A | Pause playback and step video | Pause playback and step videos |
+| `STEP_BACKWARD_SMALL` | Request to step video(s) backward by 1 frame | N/A | Pause playback and step video | Pause playback and step videos |
+| `SET_VIDEO_TO_START` | Request to set video(s) to start position | N/A | N/A | Set video to start |
+| `PLAYBACK_RATE_UPDATE` | Request to update the playback rate | Desired playback rate multiplier | Pause videos and update video channel playback rate | Pause videos and update video channel playback rate |
+| `VIDEO_POSITION_UPDATE` | Request to set the video to desired position | Float position between 0.0 (start) and 1.0 (end) | Pause video and update active frame | Pause videos and update active frames |
+| `VIDEO_FRAME_UPDATE` | Video channel playback has stepped forward by one frame | Integer frame index | Update GUI slider position | Update GUI slider position |
+| `LOAD_VIDEO` | Request to load a new video file | Path of video file to load | Attempt to load new video file | Attempt to load new video file |
 
 # Synchronizer class diagram
 

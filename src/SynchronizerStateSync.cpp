@@ -1,5 +1,6 @@
 #include <SynchronizerStateSync.h>
 #include <SynchronizerStateSyncToPlayback.h>
+#include <VideoPlaybackConstants.h>
 
 /*
 In the SYNC state, the user can control the videos individually to adjust the timing for synchronized
@@ -29,6 +30,9 @@ namespace VideoPlayback
         switch(event)
         {
             case TICK:
+            case SYNC_ON:
+            case PLAYBACK_COMPLETE:
+            case SET_VIDEO_TO_START:
                 // no action
                 return nullptr;
 
@@ -37,6 +41,11 @@ namespace VideoPlayback
                 return std::make_unique<SynchronizerStateSyncToPlayback>(m_pSynchronizer);
 
             case PLAY:
+                m_pSynchronizer->m_pChannel_left->playVideo();
+                m_pSynchronizer->m_pChannel_right->playVideo();
+
+                return nullptr;
+
             case PLAY_OR_PAUSE:
                 // if we're in sync state and we get a play event, we'll just play both videos
                 if (m_pSynchronizer->m_pChannel_left->getPlaybackStatus() == VideoPlaybackStatus::PAUSED &&
@@ -60,6 +69,46 @@ namespace VideoPlayback
 
                 return nullptr;
 
+            case STEP_FORWARD_SMALL:
+                if (LEFT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_left->stepFrame(FRAME_STEP_SMALL);
+                else if (RIGHT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_right->stepFrame(FRAME_STEP_SMALL);
+                else
+                    m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
+
+                return nullptr;
+
+            case STEP_FORWARD_LARGE:
+                if (LEFT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_left->stepFrame(FRAME_STEP_LARGE);
+                else if (RIGHT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_right->stepFrame(FRAME_STEP_LARGE);
+                else
+                    m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
+
+                return nullptr;
+
+            case STEP_BACKWARD_SMALL:
+                if (LEFT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_left->stepFrame(-FRAME_STEP_SMALL);
+                else if (RIGHT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_right->stepFrame(-FRAME_STEP_SMALL);
+                else
+                    m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
+
+                return nullptr;
+
+            case STEP_BACKWARD_LARGE:
+                if (LEFT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_left->stepFrame(-FRAME_STEP_LARGE);
+                else if (RIGHT_CHANNEL == channel)
+                    m_pSynchronizer->m_pChannel_right->stepFrame(-FRAME_STEP_LARGE);
+                else
+                    m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
+
+                return nullptr;
+
             case VIDEO_POSITION_UPDATE:
                 // This event occurs when the user moves the video position slider in the GUI. Trigger 
                 // the video position update, note that the video position is loaded by the sync manager
@@ -73,6 +122,10 @@ namespace VideoPlayback
                 // during playback; we need to pass this through to the synchronizer to update the
                 // scollbar position on the analyzer
                 m_pSynchronizer->videoFrameUpdate(channel, false);
+                return nullptr;
+
+            case PLAYBACK_RATE_UPDATE:
+
                 return nullptr;
 
             case LOAD_VIDEO:

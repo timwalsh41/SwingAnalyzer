@@ -1,6 +1,8 @@
 #ifndef VIDEOPLAYBACKTYPES_H
 #define VIDEOPLAYBACKTYPES_H
 
+#include <unordered_map>
+
 namespace VideoPlayback
 {
 
