@@ -15,29 +15,41 @@ In internal playback, the displayed frame is updated periodically. We use a mute
 
 @startuml
 
-box VideoChannel #LightBlue
 participant WorkerThread
-participant playVideoWorkerThread
-
 participant MainThread
+participant SyncManager
+
+box VideoChannel #LightBlue
+participant playVideoWorkerThread
 participant DispatchCallback
 participant updatePixBuf
-
 participant Dispatcher
 end box
 
-participant SyncManager
-
+activate WorkerThread
 WorkerThread -> playVideoWorkerThread : Periodic call
-note right: Thread-safe load\n of frame into buffer\nRetrieve next frame
+activate playVideoWorkerThread
+note right: Thread-safe load\nof frame into buffer\nRetrieve next frame
+playVideoWorkerThread -> playVideoWorkerThread : Lock mutex\nCopy frame to buffer
 playVideoWorkerThread -> Dispatcher : emit()
+deactivate playVideoWorkerThread
+
 Dispatcher -> MainThread : Signal callback
+activate MainThread
 MainThread -> DispatchCallback : DispatchCallback()
+activate DispatchCallback
 note right: Thread-safe copy\nof frame buffer\ninto display frame
+DispatchCallback -> DispatchCallback : Lock mutex\nResize frame buffer
 DispatchCallback -> updatePixBuf : updatePixBuf()
+activate updatePixBuf
 note right: Update displayed\nimage on canvas
+deactivate updatePixBuf
 DispatchCallback -> SyncManager : Update video\nposition callback
+activate SyncManager
 note right: Update slider
+deactivate SyncManager
+deactivate DispatchCallback
+deactivate MainThread
 
 @enduml
 

@@ -1,250 +1,125 @@
 #ifndef VIDEOCHANNEL_H
 #define VIDEOCHANNEL_H
 
-#include <Logger.h>
-#include <Profiler.h>
+#include <VideoChannelState.h>
+#include <IVideoDecoder.h>
+#include <IGUIImageUpdater.h>
+#include <VideoFrameManager.h>
+#include <VideoPlaybackController.h>
+#include <ThreadSafeFrameBuffer.h>
 #include <VideoPlaybackTypes.h>
+#include <Profiler.h>
+#include <Logger.h>
 
 #include <glibmm/main.h>
+#include <glibmm/dispatcher.h>
 #include <goocanvasmm.h>
-#include <opencv2/opencv.hpp>
-
-#include <mutex>
-#include <string>
+#include <memory>
+#include <functional>
 
 namespace VideoPlayback
 {
 
-class VideoChannel
-{
-  public:
-    VideoChannel(const WhichVideoChannel channel, std::function<void(int,WhichVideoChannel)> update_video_position_callback);
+class VideoChannel {
+public:
+    VideoChannel(WhichVideoChannel channel, 
+                    std::function<void(int, WhichVideoChannel)> update_callback);
     ~VideoChannel();
-
-    const Glib::RefPtr<Goocanvas::Image> &GetImage()
-    {
-        return m_image;
-    }
-
-    const bool IsVideoLoaded()
-    {
-        return m_video_loaded;
-    }
-
-    const int getActiveFrame()
-    {
-        if (m_video_loaded)
-        {
-            return m_active_frame;
-        }
-        else
-        {
-            return 0;
-        }
-    }
     
-    const int getStartFrame()
-    {
-        if (m_video_loaded)
-        {
-            return m_start_frame;
-        }
-        else
-        {
-            return 0;
-        }
-    }
+    // State queries
+    bool isLoaded() const;
+    bool isPlaying() const;
+    VideoChannelState getState() const;
     
-    const int getEndFrame()
-    {
-        if (m_video_loaded)
-        {
-            return m_end_frame;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    const inline int getEffectiveVideoLengthFrames()
-    {
-        if (m_video_loaded)
-        {
-            return m_end_frame - m_start_frame + 1;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    
-    const int getFrameCount()
-    {
-        if (m_video_loaded)
-        {
-            return m_frame_count;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    
-    const float getFramerateMultiplier()
-    {
-        if (m_video_loaded)
-        {
-            return m_framerate_multiplier;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    const float getRawFramerate_fps()
-    {
-        if (m_video_loaded)
-        {
-            return m_frames_per_second;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    const VideoPlaybackStatus getPlaybackStatus()
-    {
-        return m_continue_playback ? PLAYING : PAUSED;
-    }
-
-    void enableProfiler()
-    {
-        m_profiler_frame.enableProfiler();
-        m_profiler_image.enableProfiler();
-    }
-
-    void disableProfiler()
-    {
-        m_profiler_frame.disableProfiler();
-        m_profiler_image.disableProfiler();
-    }
-    
-    // Start video playback by kicking off the playback worker thread
-    void playVideo();
-
-    // Stop video playback
-    void pauseVideo();
-
-    // Set the video position to the start frame
-    void setVideoToStart();
-
-    // Set the video to desired frame
-    void setVideoToFrame(int frame_index);
-
-    // Step video display by a number of frames
-    void stepFrame(int frame_offset);
-
-    void setFramerateMultiplier(float framerate_multiplier);
-
-    // functions to manipulate active range of video, used by
-    // synchronizer; pass end_frame = -1 to set to end of video
-    void setStartFrame(int start_frame);
-    void setEndFrame(int end_frame);
-
-    void setVideoSize(int availableHeight, int availableWidth);
-    const VideoSize getVideoSize();
-    VideoLoadStatus loadVideo(const std::string &videoPath);
+    // Video operations
+    VideoLoadStatus loadVideo(const std::string& path);
     void unloadVideo();
-
-    void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)>);
-
-  private:
-    // video capture object holds the video data and provides individual frames
-    cv::VideoCapture m_video_capture;
-
-    // the Mat object holds the data for the current frame, this is used for thread-safe
-    // updating of the frame
-    cv::Mat m_frame_buffer{};
-
-    // the display frame object holds the data for the current frame for updating the canvas
-    // image in the main thread
-    cv::Mat m_display_frame{};
-
-    // the pixbuf object holds non-video data, e.g. a blank frame to display before
-    // the video is loaded
-    Glib::RefPtr<Gdk::Pixbuf> m_pixbuf;
-
-    // the frame update dispatcher object is used for the video playback worker thread to signal to
-    // the main thread to update the pixbuf
-    Glib::Dispatcher m_frame_update_dispatcher;
-
-    // the playback complete dispatcher object is used for the video playback worker thread to signal to
-    // the main thread that playback is complete
-    Glib::Dispatcher m_playback_complete_dispatcher;
-
-    // this mutex is used to protect the active frame data, which is updated with the latest frame
-    // from the video capture in the video playback thread, and read from the main thread to update 
-    // the canvas
-    std::mutex m_frameMutex;
-
-    // the image object is the Goocanvas object that displays the video frames on the canvas
-    Glib::RefPtr<Goocanvas::Image> m_image;
-
-    // callback to synchronizer to update the slider position
-    std::function<void(int,WhichVideoChannel)> m_update_video_position_callback = nullptr;
-
-    // callback to synchronizer when playback is complete
-    std::function<void(WhichVideoChannel)> m_video_complete_callback = nullptr;
-
+    void playVideo();
+    void pauseVideo();
+    void stepFrame(int offset);
+    void seekToFrame(int frame);
+    void setVideoToStart();
+    
+    // Frame range management
+    void setStartFrame(int start);
+    void setEndFrame(int end);
+    int getStartFrame() const;
+    int getEndFrame() const;
+    int getEffectiveLength() const;
+    
+    // Frame position
+    int getCurrentFrame() const;
+    int getTotalFrames() const;
+    
+    // Playback control
+    void setFramerateMultiplier(float multiplier);
+    float getFramerateMultiplier() const;
+    float getFramerate() const;
+    
     // Video properties
-    float m_frames_per_second;
-    int m_frame_count;
+    VideoSize getVideoSize() const;
+    void setVideoSize(int width, int height);
+    
+    // GUI integration
+    void* getImageObject();
+    const Glib::RefPtr<Goocanvas::Image>& GetImage(); // Old API compatibility
+    
+    // Compatibility methods with old VideoChannel API
+    const bool IsVideoLoaded() const;
+    const int getActiveFrame() const;
+    const int getFrameCount() const;
+    const float getRawFramerate_fps() const;
+    const VideoPlaybackStatus getPlaybackStatus() const;
+    const int getEffectiveVideoLengthFrames() const;
+    void setVideoToFrame(int frame_index);
+    void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback);
+    
+    // Callbacks
+    void registerPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback);
+    
+    // Profiling
+    void enableProfiler();
+    void disableProfiler();
 
-    // Video size
-    int m_video_width{0}, m_video_height{0};
-    float m_video_aspect_ratio{0};
-
-    // current displayed frame, this will be kept in sync with the video position
-    int m_active_frame{0};
-
-    // active range of frames
-    int m_start_frame{0};
-    int m_end_frame{0};
-
-    // time in microseconds to wait between frames
-    float m_frame_time_us{0};
-
-    // flag to continue playback in worker thread
-    bool m_continue_playback{false};
-
-    // flag to represent if a video is loaded
-    bool m_video_loaded{false};
-
-    // framerate multiplier to adjust playback speed
-    float m_framerate_multiplier{1};
-
-    // Name of channel
-    WhichVideoChannel m_channel_id;
-
-    // We will profile the frame capture and image update operations
-    Utility::Profiler m_profiler_frame{std::string(channel_name_map.at(m_channel_id)) + "VideoChannelFrameProfiler"};
-    Utility::Profiler m_profiler_image{std::string(channel_name_map.at(m_channel_id)) + "VideoChannelImageProfiler"};
-
-    Logger &m_logger;
-
-    // Directly set the video frame for display
-    void setActiveFrame(int frame_index);
-
-    // Transfer the display frame to the canvas image
-    void updatePixBuf();
-
-    // Function for the video playback worker thread that processes the video frames
-    // and updates the pixbuf for display on the canvas
-    void playVideoWorkerThread();
+private:
+    // Core components
+    std::unique_ptr<VideoChannelStateMachine> state_machine_;
+    std::unique_ptr<IVideoDecoder> video_decoder_;
+    std::unique_ptr<IGUIImageUpdater> gui_updater_;
+    std::unique_ptr<VideoFrameManager> frame_manager_;
+    std::unique_ptr<VideoPlaybackController> playback_controller_;
+    std::unique_ptr<ThreadSafeFrameBuffer> frame_buffer_;
+    
+    // Configuration
+    WhichVideoChannel channel_id_;
+    std::function<void(int, WhichVideoChannel)> position_callback_;
+    std::function<void(WhichVideoChannel)> complete_callback_;
+    
+    // Current state
+    int current_frame_;
+    float framerate_multiplier_;
+    int video_width_;
+    int video_height_;
+    
+    // Threading
+    Glib::Dispatcher frame_update_dispatcher_;
+    Glib::Dispatcher playback_complete_dispatcher_;
+    
+    // Profiling
+    Utility::Profiler profiler_frame_;
+    Utility::Profiler profiler_image_;
+    
+    // Logger
+    Logger& logger_;
+    
+    // Private methods
+    void playbackWorkerFunction();
+    void onFrameUpdate();
+    void onPlaybackComplete();
+    bool transitionState(VideoChannelEvent event);
+    void updateVideoSize();
 };
 
 } // namespace VideoPlayback
+
 #endif // VIDEOCHANNEL_H

@@ -268,7 +268,7 @@ void Analyzer::setUpGui()
     m_guiObjects.comboPlaybackRate->set_active_text("1.00x");
     m_guiObjects.comboPlaybackRate->signal_changed().connect([this]() {
         return;
-    })
+    });
 }
 
 void Analyzer::loadGuiObjects()

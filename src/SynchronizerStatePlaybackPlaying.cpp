@@ -72,6 +72,8 @@ namespace VideoPlayback
                 return nullptr;
 
             case PLAYBACK_RATE_UPDATE:
+                // User adjusts playback rate
+                // TODO: Implement playback rate update logic
                 return nullptr;
 
             case LOAD_VIDEO:

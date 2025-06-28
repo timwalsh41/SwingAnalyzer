@@ -1,3 +1,84 @@
+# Synchronization and playback
+
+## Synchronization theory of operations
+
+The video synchronization system enables users to time-align two video channels (left and right) and then play them back in perfect synchronization. The system is built around three core components that work together: the **SyncManager**, **Synchronizer**, and **VideoChannel** classes.
+
+### Component Overview
+
+**SyncManager** serves as the top-level orchestrator that:
+- Owns two `VideoChannel` instances (left and right)
+- Implements a state machine to manage sync and playback modes
+- Routes GUI events to the appropriate state handlers
+- Coordinates callbacks between video channels and the GUI
+
+**Synchronizer** manages the synchronization logic and data:
+- Calculates frame offsets between video channels
+- Handles framerate differences between videos
+- Manages synchronized playback parameters
+- Updates GUI elements (sliders) based on video position changes
+
+**VideoChannel** handles individual video playback with a modular architecture:
+- **Core Components**:
+  - `VideoChannelStateMachine`: Manages state transitions (UNLOADED/STOPPED/PLAYING)
+  - `IVideoDecoder`/`OpenCVVideoDecoder`: Handles video file loading and frame extraction
+  - `IGUIImageUpdater`/`GTKImageUpdater`: Manages GUI image display updates
+  - `VideoFrameManager`: Handles frame range validation and navigation
+  - `VideoPlaybackController`: Controls playback timing and threading
+  - `ThreadSafeFrameBuffer`: Provides thread-safe frame data management
+
+### Synchronization Process
+
+The synchronization process occurs in two distinct phases:
+
+#### 1. Sync Mode (Manual Alignment)
+When the system is in sync mode, users can independently control each video channel to establish the desired temporal alignment:
+
+- **Individual Control**: Each video channel responds directly to its own set of controls (frame stepping, slider positioning)
+- **Independent Positioning**: Users can set each video to different frame positions to align specific events (e.g., golf ball contact)
+- **No Offset Calculation**: The system tracks current frame positions but does not yet calculate or apply any synchronization offset
+- **GUI State**: Individual channel controls are enabled, while combined playback controls are disabled
+
+#### 2. Transition to Playback Mode (Offset Calculation)
+When transitioning from sync mode to playback mode, the system calculates and locks in the synchronization:
+
+- **Offset Calculation**: The system determines the frame offset using the formula:
+  ```
+  offset = (left_active_frame - left_start_frame) - (right_active_frame - right_start_frame)
+  ```
+- **Start Frame Adjustment**: Based on the calculated offset:
+  - If offset > 0: Left channel start frame is advanced by the offset amount
+  - If offset < 0: Right channel start frame is advanced by the absolute offset amount
+- **Length Determination**: The system calculates the effective playable length of each channel and uses the shorter length as the combined playback length
+- **Master Channel Selection**: The channel with the shorter effective length becomes the master for GUI slider updates
+
+#### 3. Synchronized Playback Mode
+Once synchronization parameters are established, the system maintains perfect alignment:
+
+- **Framerate Compensation**: If videos have different framerates, the system calculates a framerate ratio and applies proportional frame stepping
+- **Coordinated Control**: All playback operations (play, pause, step, seek) are applied to both channels with appropriate scaling
+- **Unified GUI**: The combined slider controls both videos simultaneously, with position updates coming from the designated master channel
+- **Boundary Enforcement**: Both videos are constrained to play within their calculated synchronized ranges
+
+### Frame Update Mechanism
+
+The system uses a callback-based approach to maintain GUI synchronization:
+
+1. **Video Channel Callbacks**: Each `VideoChannel` is configured with a callback function that triggers when its active frame changes
+2. **State Machine Routing**: The `SyncManager` receives these callbacks and routes them through the current state's event handler
+3. **Synchronizer Processing**: The `Synchronizer` calculates the normalized position (0.0 to 1.0) based on the channel's start/end frames
+4. **GUI Updates**: The position is passed to the `Analyzer` GUI class to update the appropriate slider(s)
+
+### Framerate Handling
+
+When videos have different framerates, the system maintains temporal synchronization:
+
+- **Ratio Calculation**: `framerate_ratio = left_fps / right_fps`
+- **Proportional Stepping**: Frame step operations are scaled by the framerate ratio
+- **Temporal Alignment**: Videos advance at rates proportional to their framerates to maintain synchronized timing
+
+This architecture ensures that regardless of the source videos' framerates or the user's initial alignment choices, the synchronized playback maintains perfect temporal coordination between the two video channels.
+
 # Synchronizer state diagram
 
 ## Overview
@@ -86,6 +167,11 @@ The classies involved in synchronization are:
         - `SynchronizerStateSyncToPlayback`: this is used as a transition state between sync mode and playback mode, it is used to simply set the synchronization parameters and then will immediately transition to the playback (paused) mode
         - `SynchronizerStatePlaybackPaused`: this state represents the playback mode when the videos are paused
         - `SynchronizerStatePlaybackPlaying`: this state represents the playback mode when the videos are playing
+- `VideoChannel` is the video channel implementation with modular architecture:
+    - Uses a state machine (`VideoChannelStateMachine`) for clean state management
+    - Delegates video decoding to `IVideoDecoder` interface (implemented by `OpenCVVideoDecoder`)
+    - Delegates GUI updates to `IGUIImageUpdater` interface (implemented by `GTKImageUpdater`)
+    - Uses helper classes for frame management, playback control, and thread-safe buffering
 
 ## Diagram
 
@@ -102,8 +188,19 @@ object SynchronizerStateSync
 object SynchronizerStateSyncToPlayback
 object SynchronizerStatePlaybackPaused
 object SynchronizerStatePlaybackPlaying
-object VideoChannel
 
+' VideoChannel components
+object VideoChannel
+object VideoChannelStateMachine
+object IVideoDecoder
+object OpenCVVideoDecoder
+object IGUIImageUpdater
+object GTKImageUpdater
+object VideoFrameManager
+object VideoPlaybackController
+object ThreadSafeFrameBuffer
+
+' State machine relationships
 SyncManager *-- ISynchronizerState
 ISynchronizerState <|-- SynchronizerStatePlaybackPlaying
 ISynchronizerState <|-- SynchronizerStatePlaybackPaused
@@ -111,8 +208,24 @@ ISynchronizerState <|-- SynchronizerStateSync
 ISynchronizerState <|-- SynchronizerStateSyncToPlayback
 Synchronizer <-- ISynchronizerState
 SyncManager *-- Synchronizer
+
+' VideoChannel relationships
 SyncManager o-- VideoChannel
 VideoChannel <-- Synchronizer
+
+' VideoChannel internal architecture
+VideoChannel *-- VideoChannelStateMachine
+VideoChannel *-- IVideoDecoder
+VideoChannel *-- IGUIImageUpdater
+VideoChannel *-- VideoFrameManager
+VideoChannel *-- VideoPlaybackController
+VideoChannel *-- ThreadSafeFrameBuffer
+
+' Interface implementations
+IVideoDecoder <|-- OpenCVVideoDecoder
+IGUIImageUpdater <|-- GTKImageUpdater
+
+' GUI relationships
 Analyzer o-- SyncManager
 AnalyzerWindow *-- Analyzer
 

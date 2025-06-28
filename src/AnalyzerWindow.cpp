@@ -1,7 +1,5 @@
 #include <AnalyzerWindow.h>
 
-#include <thread>
-
 /*
 TODO:
 [ ] Window sizing based on getting allocation is not working properly

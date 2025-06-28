@@ -33,6 +33,12 @@ add_executable(swing_analyzer   src/main.cpp
                                 src/SynchronizerStatePlaybackPaused.cpp
                                 src/SynchronizerStatePlaybackPlaying.cpp
                                 src/VideoChannel.cpp
+                                src/VideoChannelState.cpp
+                                src/OpenCVVideoDecoder.cpp
+                                src/GTKImageUpdater.cpp
+                                src/VideoFrameManager.cpp
+                                src/VideoPlaybackController.cpp
+                                src/ThreadSafeFrameBuffer.cpp
                                 src/Logger.cpp
                                 src/Profiler.cpp)
 

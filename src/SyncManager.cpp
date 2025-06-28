@@ -13,10 +13,10 @@ namespace VideoPlayback
         m_channel_right.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
 
         // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNEL
-        m_channel_left.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
+        m_channel_left.loadVideo("/home/tim/Downloads/Golf/2025-05-27 4i DTL.mp4");
         // auto video_size = m_channel_left.getVideoSize();
         
-        m_channel_right.loadVideo("/home/tim/Desktop/PXL_20240329_005944373.TS.mp4");
+        m_channel_right.loadVideo("/home/tim/Downloads/Golf/2025-05-27 4i FO.mp4");
         // video_size = m_channel_right.getVideoSize();
     }
 

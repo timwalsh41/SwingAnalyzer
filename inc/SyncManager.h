@@ -5,7 +5,6 @@
 #include <ISynchronizerState.h>
 #include <Logger.h>
 
-#include <atomic>
 #include <string>
 
 namespace VideoPlayback
