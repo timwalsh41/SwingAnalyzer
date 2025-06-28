@@ -4,14 +4,14 @@ namespace VideoPlayback
 {
 
 GTKImageUpdater::GTKImageUpdater() 
-    : target_width_(100), target_height_(100), logger_(Logger::get()) {
-    pixbuf_ = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, target_width_, target_height_);
-    image_ = Goocanvas::Image::create(pixbuf_, 0, 0);
+    : m_target_width(100), m_target_height(100), m_logger(Logger::get()) {
+    m_pixbuf = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, m_target_width, m_target_height);
+    m_image = Goocanvas::Image::create(m_pixbuf, 0, 0);
 }
 
 void GTKImageUpdater::updateImage(const cv::Mat& frame) {
     if (frame.empty()) {
-        logger_.warn("Attempted to update image with empty frame");
+        m_logger.warn("Attempted to update image with empty frame");
         return;
     }
     
@@ -20,39 +20,39 @@ void GTKImageUpdater::updateImage(const cv::Mat& frame) {
 
 void GTKImageUpdater::setImageSize(int width, int height) {
     if (width < 10 || height < 10) {
-        logger_.error("Invalid image size: %dx%d", width, height);
+        m_logger.error("Invalid image size: %dx%d", width, height);
         return;
     }
     
-    target_width_ = width;
-    target_height_ = height;
-    logger_.debug("Image size set to %dx%d", width, height);
+    m_target_width = width;
+    m_target_height = height;
+    m_logger.debug("Image size set to %dx%d", width, height);
 }
 
 void* GTKImageUpdater::getImageObject() {
-    return static_cast<void*>(image_.operator->());
+    return static_cast<void*>(m_image.operator->());
 }
 
 const Glib::RefPtr<Goocanvas::Image>& GTKImageUpdater::getGooCanvasImage() const {
-    return image_;
+    return m_image;
 }
 
 const Glib::RefPtr<Goocanvas::Image>& GTKImageUpdater::getImage() const {
-    return image_;
+    return m_image;
 }
 
 void GTKImageUpdater::updatePixBuf(const cv::Mat& frame) {
     try {
         // Resize frame to target size
         cv::Mat resized_frame;
-        cv::resize(frame, resized_frame, cv::Size(target_width_, target_height_));
+        cv::resize(frame, resized_frame, cv::Size(m_target_width, m_target_height));
         
         // Convert BGR to RGB
         cv::Mat rgb_frame;
         cv::cvtColor(resized_frame, rgb_frame, cv::COLOR_BGR2RGB);
         
         // Create pixbuf from RGB data
-        pixbuf_ = Gdk::Pixbuf::create_from_data(
+        m_pixbuf = Gdk::Pixbuf::create_from_data(
             rgb_frame.data, 
             Gdk::COLORSPACE_RGB, 
             false, 
@@ -63,10 +63,10 @@ void GTKImageUpdater::updatePixBuf(const cv::Mat& frame) {
         );
         
         // Update the image
-        image_->property_pixbuf() = pixbuf_;
+        m_image->property_pixbuf() = m_pixbuf;
         
     } catch (const std::exception& e) {
-        logger_.error("Error updating pixbuf: %s", e.what());
+        m_logger.error("Error updating pixbuf: %s", e.what());
     }
 }
 

@@ -3,6 +3,7 @@
 
 #include <IVideoDecoder.h>
 #include <Logger.h>
+
 #include <opencv2/opencv.hpp>
 
 namespace VideoPlayback
@@ -12,7 +13,7 @@ class OpenCVVideoDecoder : public IVideoDecoder {
 public:
     OpenCVVideoDecoder();
     ~OpenCVVideoDecoder() override = default;
-    
+
     VideoLoadStatus loadVideo(const std::string& path) override;
     void unloadVideo() override;
     bool getNextFrame(cv::Mat& frame) override;
@@ -23,11 +24,11 @@ public:
     int getCurrentFrameIndex() const override;
 
 private:
-    cv::VideoCapture video_capture_;
-    VideoProperties properties_;
-    bool is_loaded_;
-    Logger& logger_;
-    
+    cv::VideoCapture m_video_capture;
+    VideoProperties m_properties;
+    bool m_is_loaded;
+    Logger& m_logger;
+
     bool loadProperties();
 };
 

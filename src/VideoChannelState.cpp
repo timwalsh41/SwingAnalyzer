@@ -8,21 +8,21 @@ bool VideoChannelStateMachine::transition(VideoChannelEvent event) {
     if (!isValidTransition(event)) {
         return false;
     }
-    
-    switch (current_state_) {
+
+    switch (m_current_state) {
         case VideoChannelState::UNLOADED:
             if (event == VideoChannelEvent::LOAD_VIDEO) {
-                current_state_ = VideoChannelState::STOPPED;
+                m_current_state = VideoChannelState::STOPPED;
             }
             break;
-            
+
         case VideoChannelState::STOPPED:
             switch (event) {
                 case VideoChannelEvent::PLAY:
-                    current_state_ = VideoChannelState::PLAYING;
+                    m_current_state = VideoChannelState::PLAYING;
                     break;
                 case VideoChannelEvent::UNLOAD_VIDEO:
-                    current_state_ = VideoChannelState::UNLOADED;
+                    m_current_state = VideoChannelState::UNLOADED;
                     break;
                 case VideoChannelEvent::STEP_FRAME:
                 case VideoChannelEvent::SEEK_FRAME:
@@ -32,44 +32,44 @@ bool VideoChannelStateMachine::transition(VideoChannelEvent event) {
                     return false;
             }
             break;
-            
+
         case VideoChannelState::PLAYING:
             switch (event) {
                 case VideoChannelEvent::PAUSE:
                 case VideoChannelEvent::STEP_FRAME:
                 case VideoChannelEvent::SEEK_FRAME:
-                    current_state_ = VideoChannelState::STOPPED;
+                    m_current_state = VideoChannelState::STOPPED;
                     break;
                 case VideoChannelEvent::UNLOAD_VIDEO:
-                    current_state_ = VideoChannelState::UNLOADED;
+                    m_current_state = VideoChannelState::UNLOADED;
                     break;
                 default:
                     return false;
             }
             break;
     }
-    
+
     return true;
 }
 
 bool VideoChannelStateMachine::isValidTransition(VideoChannelEvent event) const {
-    switch (current_state_) {
+    switch (m_current_state) {
         case VideoChannelState::UNLOADED:
             return event == VideoChannelEvent::LOAD_VIDEO;
-            
+
         case VideoChannelState::STOPPED:
             return event == VideoChannelEvent::PLAY ||
                    event == VideoChannelEvent::UNLOAD_VIDEO ||
                    event == VideoChannelEvent::STEP_FRAME ||
                    event == VideoChannelEvent::SEEK_FRAME;
-                   
+
         case VideoChannelState::PLAYING:
             return event == VideoChannelEvent::PAUSE ||
                    event == VideoChannelEvent::UNLOAD_VIDEO ||
                    event == VideoChannelEvent::STEP_FRAME ||
                    event == VideoChannelEvent::SEEK_FRAME;
     }
-    
+
     return false;
 }
 
@@ -79,8 +79,8 @@ const char* VideoChannelStateMachine::getStateName() const {
         {VideoChannelState::STOPPED, "STOPPED"},
         {VideoChannelState::PLAYING, "PLAYING"}
     };
-    
-    auto it = state_names.find(current_state_);
+
+    auto it = state_names.find(m_current_state);
     return (it != state_names.end()) ? it->second : "UNKNOWN";
 }
 
@@ -94,7 +94,7 @@ const char* VideoChannelStateMachine::getEventName(VideoChannelEvent event) {
         {VideoChannelEvent::SEEK_FRAME, "SEEK_FRAME"},
         {VideoChannelEvent::ERROR_OCCURRED, "ERROR_OCCURRED"}
     };
-    
+
     auto it = event_names.find(event);
     return (it != event_names.end()) ? it->second : "UNKNOWN";
 }

@@ -1,8 +1,8 @@
 #ifndef SYNCHRONIZER_H
 #define SYNCHRONIZER_H
 
-#include <VideoChannel.h>
 #include <Logger.h>
+#include <VideoChannel.h>
 
 class Analyzer;
 

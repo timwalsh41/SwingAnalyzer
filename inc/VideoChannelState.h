@@ -22,30 +22,30 @@ enum class VideoChannelEvent {
 
 class VideoChannelStateMachine {
 public:
-    VideoChannelStateMachine() : current_state_(VideoChannelState::UNLOADED) {}
+    VideoChannelStateMachine() : m_current_state(VideoChannelState::UNLOADED) {}
 
     // State queries
-    bool canPlay() const { return current_state_ == VideoChannelState::STOPPED; }
-    bool canPause() const { return current_state_ == VideoChannelState::PLAYING; }
-    bool canSeek() const { return current_state_ != VideoChannelState::UNLOADED; }
-    bool canStep() const { return current_state_ != VideoChannelState::UNLOADED; }
-    bool isLoaded() const { return current_state_ != VideoChannelState::UNLOADED; }
-    bool isPlaying() const { return current_state_ == VideoChannelState::PLAYING; }
-    
-    VideoChannelState getCurrentState() const { return current_state_; }
-    
+    bool canPlay() const { return m_current_state == VideoChannelState::STOPPED; }
+    bool canPause() const { return m_current_state == VideoChannelState::PLAYING; }
+    bool canSeek() const { return m_current_state != VideoChannelState::UNLOADED; }
+    bool canStep() const { return m_current_state != VideoChannelState::UNLOADED; }
+    bool isLoaded() const { return m_current_state != VideoChannelState::UNLOADED; }
+    bool isPlaying() const { return m_current_state == VideoChannelState::PLAYING; }
+
+    VideoChannelState getCurrentState() const { return m_current_state; }
+
     // State transitions
     bool transition(VideoChannelEvent event);
-    
+
     // Get state name for logging
     const char* getStateName() const;
-    
+
     // Get event name for logging
     static const char* getEventName(VideoChannelEvent event);
 
 private:
-    VideoChannelState current_state_;
-    
+    VideoChannelState m_current_state;
+
     bool isValidTransition(VideoChannelEvent event) const;
 };
 

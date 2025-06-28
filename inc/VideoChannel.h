@@ -1,21 +1,22 @@
 #ifndef VIDEOCHANNEL_H
 #define VIDEOCHANNEL_H
 
-#include <VideoChannelState.h>
-#include <IVideoDecoder.h>
 #include <IGUIImageUpdater.h>
+#include <IVideoDecoder.h>
+#include <Logger.h>
+#include <Profiler.h>
+#include <ThreadSafeFrameBuffer.h>
+#include <VideoChannelState.h>
 #include <VideoFrameManager.h>
 #include <VideoPlaybackController.h>
-#include <ThreadSafeFrameBuffer.h>
 #include <VideoPlaybackTypes.h>
-#include <Profiler.h>
-#include <Logger.h>
 
-#include <glibmm/main.h>
 #include <glibmm/dispatcher.h>
+#include <glibmm/main.h>
 #include <goocanvasmm.h>
-#include <memory>
+
 #include <functional>
+#include <memory>
 
 namespace VideoPlayback
 {
@@ -83,34 +84,34 @@ public:
 
 private:
     // Core components
-    std::unique_ptr<VideoChannelStateMachine> state_machine_;
-    std::unique_ptr<IVideoDecoder> video_decoder_;
-    std::unique_ptr<IGUIImageUpdater> gui_updater_;
-    std::unique_ptr<VideoFrameManager> frame_manager_;
-    std::unique_ptr<VideoPlaybackController> playback_controller_;
-    std::unique_ptr<ThreadSafeFrameBuffer> frame_buffer_;
+    std::unique_ptr<VideoChannelStateMachine> m_state_machine;
+    std::unique_ptr<IVideoDecoder> m_video_decoder;
+    std::unique_ptr<IGUIImageUpdater> m_gui_updater;
+    std::unique_ptr<VideoFrameManager> m_frame_manager;
+    std::unique_ptr<VideoPlaybackController> m_playback_controller;
+    std::unique_ptr<ThreadSafeFrameBuffer> m_frame_buffer;
     
     // Configuration
-    WhichVideoChannel channel_id_;
-    std::function<void(int, WhichVideoChannel)> position_callback_;
-    std::function<void(WhichVideoChannel)> complete_callback_;
+    WhichVideoChannel m_channel_id;
+    std::function<void(int, WhichVideoChannel)> m_position_callback;
+    std::function<void(WhichVideoChannel)> m_complete_callback;
     
     // Current state
-    int current_frame_;
-    float framerate_multiplier_;
-    int video_width_;
-    int video_height_;
+    int m_current_frame;
+    float m_framerate_multiplier;
+    int m_video_width;
+    int m_video_height;
     
     // Threading
-    Glib::Dispatcher frame_update_dispatcher_;
-    Glib::Dispatcher playback_complete_dispatcher_;
+    Glib::Dispatcher m_frame_update_dispatcher;
+    Glib::Dispatcher m_playback_complete_dispatcher;
     
     // Profiling
-    Utility::Profiler profiler_frame_;
-    Utility::Profiler profiler_image_;
+    Utility::Profiler m_profiler_frame;
+    Utility::Profiler m_profiler_image;
     
     // Logger
-    Logger& logger_;
+    Logger& m_logger;
     
     // Private methods
     void playbackWorkerFunction();

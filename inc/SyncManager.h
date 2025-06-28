@@ -1,9 +1,9 @@
 #ifndef SYNCHMANAGER_H
 #define SYNCHMANAGER_H
 
-#include <Synchronizer.h>
 #include <ISynchronizerState.h>
 #include <Logger.h>
+#include <Synchronizer.h>
 
 #include <string>
 

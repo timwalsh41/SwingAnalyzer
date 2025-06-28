@@ -2,7 +2,9 @@
 #define IVIDEODECODER_H
 
 #include <VideoPlaybackTypes.h>
+
 #include <opencv2/opencv.hpp>
+
 #include <string>
 
 namespace VideoPlayback
@@ -19,7 +21,7 @@ struct VideoProperties {
 class IVideoDecoder {
 public:
     virtual ~IVideoDecoder() = default;
-    
+
     virtual VideoLoadStatus loadVideo(const std::string& path) = 0;
     virtual void unloadVideo() = 0;
     virtual bool getNextFrame(cv::Mat& frame) = 0;

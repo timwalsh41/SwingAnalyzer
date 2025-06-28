@@ -11,82 +11,82 @@ namespace VideoPlayback
 
 VideoChannel::VideoChannel(WhichVideoChannel channel, 
                                  std::function<void(int, WhichVideoChannel)> update_callback)
-    : channel_id_(channel)
-    , position_callback_(update_callback)
-    , current_frame_(0)
-    , framerate_multiplier_(1.0f)
-    , video_width_(100)
-    , video_height_(100)
-    , profiler_frame_(std::string(channel_name_map.at(channel_id_)) + "VideoChannelFrameProfiler")
-    , profiler_image_(std::string(channel_name_map.at(channel_id_)) + "VideoChannelImageProfiler")
-    , logger_(Logger::get()) {
-    
+    : m_channel_id(channel)
+    , m_position_callback(update_callback)
+    , m_current_frame(0)
+    , m_framerate_multiplier(1.0f)
+    , m_video_width(100)
+    , m_video_height(100)
+    , m_profiler_frame(std::string(channel_name_map.at(m_channel_id)) + "VideoChannelFrameProfiler")
+    , m_profiler_image(std::string(channel_name_map.at(m_channel_id)) + "VideoChannelImageProfiler")
+    , m_logger(Logger::get()) 
+{    
     // Initialize components
-    state_machine_ = std::make_unique<VideoChannelStateMachine>();
-    video_decoder_ = std::make_unique<OpenCVVideoDecoder>();
-    gui_updater_ = std::make_unique<GTKImageUpdater>();
-    frame_manager_ = std::make_unique<VideoFrameManager>();
-    playback_controller_ = std::make_unique<VideoPlaybackController>();
-    frame_buffer_ = std::make_unique<ThreadSafeFrameBuffer>();
+    m_state_machine = std::make_unique<VideoChannelStateMachine>();
+    m_video_decoder = std::make_unique<OpenCVVideoDecoder>();
+    m_gui_updater = std::make_unique<GTKImageUpdater>();
+    m_frame_manager = std::make_unique<VideoFrameManager>();
+    m_playback_controller = std::make_unique<VideoPlaybackController>();
+    m_frame_buffer = std::make_unique<ThreadSafeFrameBuffer>();
     
     // Setup dispatchers
-    frame_update_dispatcher_.connect([this]() { onFrameUpdate(); });
-    playback_complete_dispatcher_.connect([this]() { onPlaybackComplete(); });
+    m_frame_update_dispatcher.connect([this]() { onFrameUpdate(); });
+    m_playback_complete_dispatcher.connect([this]() { onPlaybackComplete(); });
     
     // Reset profilers
-    profiler_frame_.reset();
-    profiler_image_.reset(true);
+    m_profiler_frame.reset();
+    m_profiler_image.reset(true);
     
-    logger_.info("VideoChannel %s initialized", channel_name_map.at(channel_id_));
+    m_logger.info("VideoChannel %s initialized", channel_name_map.at(m_channel_id));
 }
 
 VideoChannel::~VideoChannel() {
     if (isPlaying()) {
         pauseVideo();
     }
-    logger_.debug("VideoChannel %s destroyed", channel_name_map.at(channel_id_));
+    m_logger.debug("VideoChannel %s destroyed", channel_name_map.at(m_channel_id));
 }
 
 bool VideoChannel::isLoaded() const {
-    return state_machine_->isLoaded();
+    return m_state_machine->isLoaded();
 }
 
 bool VideoChannel::isPlaying() const {
-    return state_machine_->isPlaying();
+    return m_state_machine->isPlaying();
 }
 
 VideoChannelState VideoChannel::getState() const {
-    return state_machine_->getCurrentState();
+    return m_state_machine->getCurrentState();
 }
 
 VideoLoadStatus VideoChannel::loadVideo(const std::string& path) {
     if (!transitionState(VideoChannelEvent::LOAD_VIDEO)) {
-        logger_.warn("Cannot load video in current state: %s", state_machine_->getStateName());
+        m_logger.warn("Cannot load video in current state: %s", m_state_machine->getStateName());
         return VIDEO_LOAD_UNKNOWN_ERROR;
     }
     
-    VideoLoadStatus status = video_decoder_->loadVideo(path);
+    VideoLoadStatus status = m_video_decoder->loadVideo(path);
     if (status != VIDEO_LOAD_SUCCESS) {
         // Revert state transition
-        state_machine_->transition(VideoChannelEvent::ERROR_OCCURRED);
+        m_state_machine->transition(VideoChannelEvent::ERROR_OCCURRED);
         return status;
     }
     
     // Setup frame management
-    VideoProperties props = video_decoder_->getProperties();
-    frame_manager_->setTotalFrames(props.frame_count);
+    VideoProperties props = m_video_decoder->getProperties();
+    m_frame_manager->setTotalFrames(props.frame_count);
     
     // Update playback controller
-    playback_controller_->setFramerate(props.fps, framerate_multiplier_);
+    m_playback_controller->setFramerate(props.fps, m_framerate_multiplier);
     
     // Update video size
     updateVideoSize();
     
     // Set to start frame
-    current_frame_ = frame_manager_->getStartFrame();
+    m_current_frame = m_frame_manager->getStartFrame();
     
-    logger_.info("Loaded %s channel video: %dx%d, %.2f fps, %d frames", 
-                 channel_name_map.at(channel_id_), props.width, props.height, 
+    m_logger.info("Loaded %s channel video: %dx%d, %.2f fps, %d frames", 
+                 channel_name_map.at(m_channel_id), props.width, props.height, 
                  props.fps, props.frame_count);
     
     setVideoToStart();
@@ -99,41 +99,41 @@ void VideoChannel::unloadVideo() {
     }
     
     if (transitionState(VideoChannelEvent::UNLOAD_VIDEO)) {
-        video_decoder_->unloadVideo();
-        current_frame_ = 0;
-        logger_.info("Unloaded %s channel video", channel_name_map.at(channel_id_));
+        m_video_decoder->unloadVideo();
+        m_current_frame = 0;
+        m_logger.info("Unloaded %s channel video", channel_name_map.at(m_channel_id));
     }
 }
 
 void VideoChannel::playVideo() {
     if (!transitionState(VideoChannelEvent::PLAY)) {
-        logger_.warn("Cannot play video in current state: %s", state_machine_->getStateName());
+        m_logger.warn("Cannot play video in current state: %s", m_state_machine->getStateName());
         return;
     }
     
     // Reset to start if at end
-    if (current_frame_ >= frame_manager_->getEndFrame()) {
-        current_frame_ = frame_manager_->getStartFrame();
-        video_decoder_->seekToFrame(current_frame_);
-        logger_.info("Reset %s channel video playback to start", channel_name_map.at(channel_id_));
+    if (m_current_frame >= m_frame_manager->getEndFrame()) {
+        m_current_frame = m_frame_manager->getStartFrame();
+        m_video_decoder->seekToFrame(m_current_frame);
+        m_logger.info("Reset %s channel video playback to start", channel_name_map.at(m_channel_id));
     }
     
     // Start playback
-    playback_controller_->startPlayback([this]() { playbackWorkerFunction(); });
+    m_playback_controller->startPlayback([this]() { playbackWorkerFunction(); });
     
-    logger_.info("Started playback of %s channel video", channel_name_map.at(channel_id_));
+    m_logger.info("Started playback of %s channel video", channel_name_map.at(m_channel_id));
 }
 
 void VideoChannel::pauseVideo() {
     if (transitionState(VideoChannelEvent::PAUSE)) {
-        playback_controller_->stopPlayback();
-        logger_.info("Paused %s channel video", channel_name_map.at(channel_id_));
+        m_playback_controller->stopPlayback();
+        m_logger.info("Paused %s channel video", channel_name_map.at(m_channel_id));
     }
 }
 
 void VideoChannel::stepFrame(int offset) {
-    if (!state_machine_->canStep()) {
-        logger_.warn("Cannot step frame in current state: %s", state_machine_->getStateName());
+    if (!m_state_machine->canStep()) {
+        m_logger.warn("Cannot step frame in current state: %s", m_state_machine->getStateName());
         return;
     }
     
@@ -142,58 +142,58 @@ void VideoChannel::stepFrame(int offset) {
     // Stop playback if active
     if (isPlaying()) {
         transitionState(VideoChannelEvent::STEP_FRAME);
-        playback_controller_->stopPlayback();
+        m_playback_controller->stopPlayback();
     }
     
-    int new_frame = frame_manager_->stepFrame(current_frame_, offset);
+    int new_frame = m_frame_manager->stepFrame(m_current_frame, offset);
     
-    logger_.debug("Stepping %s channel frame from %d to %d", 
-                  channel_name_map.at(channel_id_), current_frame_, new_frame);
+    m_logger.debug("Stepping %s channel frame from %d to %d", 
+                  channel_name_map.at(m_channel_id), m_current_frame, new_frame);
     
     seekToFrame(new_frame);
 }
 
 void VideoChannel::seekToFrame(int frame) {
-    if (!state_machine_->canSeek()) {
-        logger_.warn("Cannot seek in current state: %s", state_machine_->getStateName());
+    if (!m_state_machine->canSeek()) {
+        m_logger.warn("Cannot seek in current state: %s", m_state_machine->getStateName());
         return;
     }
     
-    if (!frame_manager_->isValidFrame(frame)) {
-        logger_.warn("Invalid frame index: %d (valid range: %d-%d)", 
-                     frame, frame_manager_->getStartFrame(), frame_manager_->getEndFrame());
+    if (!m_frame_manager->isValidFrame(frame)) {
+        m_logger.warn("Invalid frame index: %d (valid range: %d-%d)", 
+                     frame, m_frame_manager->getStartFrame(), m_frame_manager->getEndFrame());
         return;
     }
     
     // Stop playback if active
     if (isPlaying()) {
         transitionState(VideoChannelEvent::SEEK_FRAME);
-        playback_controller_->stopPlayback();
+        m_playback_controller->stopPlayback();
     }
     
-    current_frame_ = frame;
+    m_current_frame = frame;
     
     // Load and display the frame
-    if (video_decoder_->seekToFrame(current_frame_)) {
+    if (m_video_decoder->seekToFrame(m_current_frame)) {
         cv::Mat frame_data;
-        if (video_decoder_->getCurrentFrame(frame_data)) {
-            frame_buffer_->updateFrame(frame_data);
-            cv::Mat display_frame = frame_buffer_->getDisplayFrame(cv::Size(video_width_, video_height_));
+        if (m_video_decoder->getCurrentFrame(frame_data)) {
+            m_frame_buffer->updateFrame(frame_data);
+            cv::Mat display_frame = m_frame_buffer->getDisplayFrame(cv::Size(m_video_width, m_video_height));
             if (!display_frame.empty()) {
-                gui_updater_->updateImage(display_frame);
+                m_gui_updater->updateImage(display_frame);
             }
         }
     }
     
     // Notify position update
-    if (position_callback_) {
-        position_callback_(current_frame_, channel_id_);
+    if (m_position_callback) {
+        m_position_callback(m_current_frame, m_channel_id);
     }
 }
 
 void VideoChannel::setVideoToStart() {
     if (isLoaded()) {
-        seekToFrame(frame_manager_->getStartFrame());
+        seekToFrame(m_frame_manager->getStartFrame());
     }
 }
 
@@ -202,10 +202,10 @@ void VideoChannel::setStartFrame(int start) {
     
     if (isPlaying()) {
         transitionState(VideoChannelEvent::PAUSE);
-        playback_controller_->stopPlayback();
+        m_playback_controller->stopPlayback();
     }
     
-    frame_manager_->setStartFrame(start);
+    m_frame_manager->setStartFrame(start);
 }
 
 void VideoChannel::setEndFrame(int end) {
@@ -213,35 +213,35 @@ void VideoChannel::setEndFrame(int end) {
     
     if (isPlaying()) {
         transitionState(VideoChannelEvent::PAUSE);
-        playback_controller_->stopPlayback();
+        m_playback_controller->stopPlayback();
     }
     
-    frame_manager_->setEndFrame(end);
+    m_frame_manager->setEndFrame(end);
 }
 
 int VideoChannel::getStartFrame() const {
-    return isLoaded() ? frame_manager_->getStartFrame() : 0;
+    return isLoaded() ? m_frame_manager->getStartFrame() : 0;
 }
 
 int VideoChannel::getEndFrame() const {
-    return isLoaded() ? frame_manager_->getEndFrame() : 0;
+    return isLoaded() ? m_frame_manager->getEndFrame() : 0;
 }
 
 int VideoChannel::getEffectiveLength() const {
-    return isLoaded() ? frame_manager_->getEffectiveLength() : 0;
+    return isLoaded() ? m_frame_manager->getEffectiveLength() : 0;
 }
 
 int VideoChannel::getCurrentFrame() const {
-    return isLoaded() ? current_frame_ : 0;
+    return isLoaded() ? m_current_frame : 0;
 }
 
 int VideoChannel::getTotalFrames() const {
-    return isLoaded() ? frame_manager_->getTotalFrames() : 0;
+    return isLoaded() ? m_frame_manager->getTotalFrames() : 0;
 }
 
 void VideoChannel::setFramerateMultiplier(float multiplier) {
     if (multiplier > MAX_FRAMERATE_MULTIPLIER || multiplier < MIN_FRAMERATE_MULTIPLIER) {
-        logger_.warn("Invalid framerate multiplier %.3f, valid range is (%.3f,%.3f)", 
+        m_logger.warn("Invalid framerate multiplier %.3f, valid range is (%.3f,%.3f)", 
                      multiplier, MIN_FRAMERATE_MULTIPLIER, MAX_FRAMERATE_MULTIPLIER);
         return;
     }
@@ -251,22 +251,22 @@ void VideoChannel::setFramerateMultiplier(float multiplier) {
         pauseVideo();
     }
     
-    framerate_multiplier_ = multiplier;
+    m_framerate_multiplier = multiplier;
     
     if (isLoaded()) {
-        VideoProperties props = video_decoder_->getProperties();
-        playback_controller_->setFramerate(props.fps, framerate_multiplier_);
+        VideoProperties props = m_video_decoder->getProperties();
+        m_playback_controller->setFramerate(props.fps, m_framerate_multiplier);
     }
 }
 
 float VideoChannel::getFramerateMultiplier() const {
-    return isLoaded() ? framerate_multiplier_ : 0.0f;
+    return isLoaded() ? m_framerate_multiplier : 0.0f;
 }
 
 float VideoChannel::getFramerate() const {
     if (!isLoaded()) return 0.0f;
     
-    VideoProperties props = video_decoder_->getProperties();
+    VideoProperties props = m_video_decoder->getProperties();
     return props.fps;
 }
 
@@ -275,41 +275,41 @@ VideoSize VideoChannel::getVideoSize() const {
         return {0, 0, 0.0f};
     }
     
-    VideoProperties props = video_decoder_->getProperties();
-    return {video_width_, video_height_, props.aspect_ratio};
+    VideoProperties props = m_video_decoder->getProperties();
+    return {m_video_width, m_video_height, props.aspect_ratio};
 }
 
 void VideoChannel::setVideoSize(int width, int height) {
     if (!isLoaded()) return;
     
     if (width < 10 || height < 10) {
-        logger_.error("Invalid video size: %dx%d", width, height);
+        m_logger.error("Invalid video size: %dx%d", width, height);
         return;
     }
     
-    VideoProperties props = video_decoder_->getProperties();
+    VideoProperties props = m_video_decoder->getProperties();
     
     // Maintain aspect ratio
     if (static_cast<float>(width) / props.aspect_ratio <= height) {
-        video_width_ = width;
-        video_height_ = static_cast<int>(static_cast<float>(width) / props.aspect_ratio);
+        m_video_width = width;
+        m_video_height = static_cast<int>(static_cast<float>(width) / props.aspect_ratio);
     } else {
-        video_height_ = height;
-        video_width_ = static_cast<int>(static_cast<float>(height) * props.aspect_ratio);
+        m_video_height = height;
+        m_video_width = static_cast<int>(static_cast<float>(height) * props.aspect_ratio);
     }
     
-    gui_updater_->setImageSize(video_width_, video_height_);
+    m_gui_updater->setImageSize(m_video_width, m_video_height);
     
-    logger_.info("Set %s channel video size to %dx%d", 
-                 channel_name_map.at(channel_id_), video_width_, video_height_);
+    m_logger.info("Set %s channel video size to %dx%d", 
+                 channel_name_map.at(m_channel_id), m_video_width, m_video_height);
 }
 
 void* VideoChannel::getImageObject() {
-    return gui_updater_->getImageObject();
+    return m_gui_updater->getImageObject();
 }
 
 void VideoChannel::registerPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback) {
-    complete_callback_ = callback;
+    m_complete_callback = callback;
 }
 
 // Compatibility methods with old VideoChannel API
@@ -347,91 +347,91 @@ void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(Whic
 
 const Glib::RefPtr<Goocanvas::Image>& VideoChannel::GetImage() {
     // Return the Goocanvas::Image from the GTK updater
-    GTKImageUpdater* gtk_updater = static_cast<GTKImageUpdater*>(gui_updater_.get());
+    GTKImageUpdater* gtk_updater = static_cast<GTKImageUpdater*>(m_gui_updater.get());
     return gtk_updater->getImage();
 }
 
 void VideoChannel::enableProfiler() {
-    profiler_frame_.enableProfiler();
-    profiler_image_.enableProfiler();
+    m_profiler_frame.enableProfiler();
+    m_profiler_image.enableProfiler();
 }
 
 void VideoChannel::disableProfiler() {
-    profiler_frame_.disableProfiler();
-    profiler_image_.disableProfiler();
+    m_profiler_frame.disableProfiler();
+    m_profiler_image.disableProfiler();
 }
 
 // Private methods
 
 void VideoChannel::playbackWorkerFunction() {
-    profiler_frame_.tick();
+    m_profiler_frame.tick();
     
-    logger_.info("Starting playback of %s channel video with frame time %.2f ms", 
-                 channel_name_map.at(channel_id_), 
-                 playback_controller_->getFrameInterval().count() / 1000.0f);
+    m_logger.info("Starting playback of %s channel video with frame time %.2f ms", 
+                 channel_name_map.at(m_channel_id), 
+                 m_playback_controller->getFrameInterval().count() / 1000.0f);
     
     cv::Mat frame;
-    while (current_frame_ < frame_manager_->getEndFrame() && playback_controller_->isPlaying()) {
-        profiler_frame_.tick();
+    while (m_current_frame < m_frame_manager->getEndFrame() && m_playback_controller->isPlaying()) {
+        m_profiler_frame.tick();
         
         // Get next frame
-        if (video_decoder_->getNextFrame(frame)) {
+        if (m_video_decoder->getNextFrame(frame)) {
             if (!frame.empty()) {
-                frame_buffer_->updateFrame(frame);
-                frame_update_dispatcher_.emit();
+                m_frame_buffer->updateFrame(frame);
+                m_frame_update_dispatcher.emit();
             } else {
-                logger_.warn("Frame %d is empty for %s channel", 
-                           current_frame_, channel_name_map.at(channel_id_));
+                m_logger.warn("Frame %d is empty for %s channel", 
+                           m_current_frame, channel_name_map.at(m_channel_id));
             }
         }
         
-        current_frame_++;
-        profiler_frame_.tock();
+        m_current_frame++;
+        m_profiler_frame.tock();
         
         // Wait for next frame time
         std::this_thread::sleep_until(
-            profiler_frame_.getTickTime() + playback_controller_->getFrameInterval()
+            m_profiler_frame.getTickTime() + m_playback_controller->getFrameInterval()
         );
     }
     
-    profiler_frame_.dump();
-    profiler_image_.dump();
-    profiler_frame_.reset();
-    profiler_image_.reset(true);
+    m_profiler_frame.dump();
+    m_profiler_image.dump();
+    m_profiler_frame.reset();
+    m_profiler_image.reset(true);
     
-    playback_complete_dispatcher_.emit();
-    logger_.info("Channel %s finished playback", channel_name_map.at(channel_id_));
+    m_playback_complete_dispatcher.emit();
+    m_logger.info("Channel %s finished playback", channel_name_map.at(m_channel_id));
 }
 
 void VideoChannel::onFrameUpdate() {
-    profiler_image_.tick();
+    m_profiler_image.tick();
     
-    cv::Mat display_frame = frame_buffer_->getDisplayFrame(cv::Size(video_width_, video_height_));
+    cv::Mat display_frame = m_frame_buffer->getDisplayFrame(cv::Size(m_video_width, m_video_height));
     if (!display_frame.empty()) {
-        gui_updater_->updateImage(display_frame);
+        m_gui_updater->updateImage(display_frame);
     }
     
     // Update position
-    if (position_callback_) {
-        position_callback_(current_frame_, channel_id_);
+    if (m_position_callback) {
+        m_position_callback(m_current_frame, m_channel_id);
     }
     
-    profiler_image_.tock();
+    m_profiler_image.tock();
 }
 
 void VideoChannel::onPlaybackComplete() {
     transitionState(VideoChannelEvent::PAUSE);
     
-    if (complete_callback_) {
-        complete_callback_(channel_id_);
+    if (m_complete_callback) {
+        m_complete_callback(m_channel_id);
     }
 }
 
 bool VideoChannel::transitionState(VideoChannelEvent event) {
-    bool success = state_machine_->transition(event);
+    bool success = m_state_machine->transition(event);
     if (!success) {
-        logger_.warn("Invalid state transition: %s in state %s", 
-                     VideoChannelStateMachine::getEventName(event), state_machine_->getStateName());
+        m_logger.warn("Invalid state transition: %s in state %s", 
+                     VideoChannelStateMachine::getEventName(event), m_state_machine->getStateName());
     }
     return success;
 }
@@ -439,7 +439,7 @@ bool VideoChannel::transitionState(VideoChannelEvent event) {
 void VideoChannel::updateVideoSize() {
     if (!isLoaded()) return;
     
-    VideoProperties props = video_decoder_->getProperties();
+    VideoProperties props = m_video_decoder->getProperties();
     setVideoSize(800, 800); // Default size, can be adjusted later
 }
 

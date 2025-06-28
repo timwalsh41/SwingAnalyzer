@@ -3,6 +3,7 @@
 
 #include <IGUIImageUpdater.h>
 #include <Logger.h>
+
 #include <gdkmm/pixbuf.h>
 #include <goocanvasmm.h>
 
@@ -23,11 +24,11 @@ public:
     const Glib::RefPtr<Goocanvas::Image>& getImage() const; // Alias for compatibility
 
 private:
-    Glib::RefPtr<Gdk::Pixbuf> pixbuf_;
-    Glib::RefPtr<Goocanvas::Image> image_;
-    int target_width_;
-    int target_height_;
-    Logger& logger_;
+    Glib::RefPtr<Gdk::Pixbuf> m_pixbuf;
+    Glib::RefPtr<Goocanvas::Image> m_image;
+    int m_target_width;
+    int m_target_height;
+    Logger& m_logger;
     
     void updatePixBuf(const cv::Mat& frame);
 };

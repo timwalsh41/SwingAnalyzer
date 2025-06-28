@@ -4,69 +4,69 @@ namespace VideoPlayback
 {
 
 VideoFrameManager::VideoFrameManager() 
-    : start_frame_(0), end_frame_(0), total_frames_(0), logger_(Logger::get()) {
+    : m_start_frame(0), m_end_frame(0), m_total_frames(0), m_logger(Logger::get()) {
 }
 
 void VideoFrameManager::setFrameRange(int start, int end, int total_frames) {
-    total_frames_ = total_frames;
-    start_frame_ = std::max(0, start);
-    end_frame_ = (end == -1) ? total_frames_ - 1 : std::min(end, total_frames_ - 1);
+    m_total_frames = total_frames;
+    m_start_frame = std::max(0, start);
+    m_end_frame = (end == -1) ? m_total_frames - 1 : std::min(end, m_total_frames - 1);
     validateFrameRange();
 }
 
 void VideoFrameManager::setStartFrame(int start) {
-    if (start < 0 || start >= end_frame_) {
-        logger_.warn("Invalid start frame: %d (valid range: 0-%d)", start, end_frame_ - 1);
+    if (start < 0 || start >= m_end_frame) {
+        m_logger.warn("Invalid start frame: %d (valid range: 0-%d)", start, m_end_frame - 1);
         return;
     }
-    start_frame_ = start;
+    m_start_frame = start;
 }
 
 void VideoFrameManager::setEndFrame(int end) {
     if (end == -1) {
-        end_frame_ = total_frames_ - 1;
-    } else if (end <= start_frame_ || end >= total_frames_) {
-        logger_.warn("Invalid end frame: %d (valid range: %d-%d)", 
-                     end, start_frame_ + 1, total_frames_ - 1);
+        m_end_frame = m_total_frames - 1;
+    } else if (end <= m_start_frame || end >= m_total_frames) {
+        m_logger.warn("Invalid end frame: %d (valid range: %d-%d)", 
+                     end, m_start_frame + 1, m_total_frames - 1);
         return;
     } else {
-        end_frame_ = end;
+        m_end_frame = end;
     }
 }
 
 void VideoFrameManager::setTotalFrames(int total) {
     if (total <= 0) {
-        logger_.warn("Invalid total frames: %d", total);
+        m_logger.warn("Invalid total frames: %d", total);
         return;
     }
-    
-    total_frames_ = total;
-    start_frame_ = 0;
-    end_frame_ = total_frames_ - 1;
+
+    m_total_frames = total;
+    m_start_frame = 0;
+    m_end_frame = m_total_frames - 1;
 }
 
 bool VideoFrameManager::isValidFrame(int frame) const {
-    return frame >= start_frame_ && frame <= end_frame_;
+    return frame >= m_start_frame && frame <= m_end_frame;
 }
 
 int VideoFrameManager::clampFrame(int frame) const {
-    return std::clamp(frame, start_frame_, end_frame_);
+    return std::clamp(frame, m_start_frame, m_end_frame);
 }
 
 int VideoFrameManager::getEffectiveLength() const {
-    return end_frame_ - start_frame_ + 1;
+    return m_end_frame - m_start_frame + 1;
 }
 
 int VideoFrameManager::getNextFrame(int current_frame) const {
-    if (current_frame >= end_frame_) {
-        return end_frame_; // Already at end
+    if (current_frame >= m_end_frame) {
+        return m_end_frame; // Already at end
     }
     return current_frame + 1;
 }
 
 int VideoFrameManager::getPreviousFrame(int current_frame) const {
-    if (current_frame <= start_frame_) {
-        return start_frame_; // Already at start
+    if (current_frame <= m_start_frame) {
+        return m_start_frame; // Already at start
     }
     return current_frame - 1;
 }
@@ -77,11 +77,11 @@ int VideoFrameManager::stepFrame(int current_frame, int offset) const {
 }
 
 void VideoFrameManager::validateFrameRange() {
-    if (start_frame_ >= end_frame_) {
-        logger_.warn("Invalid frame range: start=%d, end=%d. Resetting to full range.", 
-                     start_frame_, end_frame_);
-        start_frame_ = 0;
-        end_frame_ = std::max(0, total_frames_ - 1);
+    if (m_start_frame >= m_end_frame) {
+        m_logger.warn("Invalid frame range: start=%d, end=%d. Resetting to full range.", 
+                     m_start_frame, m_end_frame);
+        m_start_frame = 0;
+        m_end_frame = std::max(0, m_total_frames - 1);
     }
 }
 

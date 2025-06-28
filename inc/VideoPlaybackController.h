@@ -1,12 +1,13 @@
 #ifndef VIDEOPLAYBACKCONTROLLER_H
 #define VIDEOPLAYBACKCONTROLLER_H
 
-#include <VideoPlaybackConstants.h>
 #include <Logger.h>
+#include <VideoPlaybackConstants.h>
+
 #include <atomic>
-#include <thread>
 #include <chrono>
 #include <functional>
+#include <thread>
 
 namespace VideoPlayback
 {
@@ -15,20 +16,20 @@ class VideoPlaybackController {
 public:
     VideoPlaybackController();
     ~VideoPlaybackController();
-    
+
     void startPlayback(std::function<void()> playback_function);
     void stopPlayback();
     bool isPlaying() const;
-    
+
     void setFramerate(float fps, float multiplier = 1.0f);
     std::chrono::microseconds getFrameInterval() const;
-    
+
 private:
-    std::atomic<bool> should_continue_;
-    std::thread playback_thread_;
-    float frame_time_us_;
-    Logger& logger_;
-    
+    std::atomic<bool> m_should_continue;
+    std::thread m_playback_thread;
+    float m_frame_time_us;
+    Logger& m_logger;
+
     void cleanup();
 };
 
