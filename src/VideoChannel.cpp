@@ -337,10 +337,6 @@ const int VideoChannel::getEffectiveVideoLengthFrames() const {
     return getEffectiveLength();
 }
 
-void VideoChannel::setVideoToFrame(int frame_index) {
-    seekToFrame(frame_index);
-}
-
 void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback) {
     registerPlaybackCompleteCallback(callback);
 }

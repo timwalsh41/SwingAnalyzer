@@ -72,7 +72,6 @@ public:
     const float getRawFramerate_fps() const;
     const VideoPlaybackStatus getPlaybackStatus() const;
     const int getEffectiveVideoLengthFrames() const;
-    void setVideoToFrame(int frame_index);
     void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback);
     
     // Callbacks

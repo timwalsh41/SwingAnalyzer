@@ -112,20 +112,20 @@ namespace VideoPlayback
             case LEFT_CHANNEL:
                 left_video_length = m_pChannel_left->getEndFrame() - m_pChannel_left->getStartFrame();
                 left_frame = m_pChannel_left->getStartFrame() + static_cast<int>(m_new_video_position * left_video_length);
-                m_pChannel_left->setVideoToFrame(left_frame);
+                m_pChannel_left->seekToFrame(left_frame);
                 break;
             
             case RIGHT_CHANNEL:
                 right_video_length = m_pChannel_right->getEndFrame() - m_pChannel_right->getStartFrame();
                 right_frame = m_pChannel_right->getStartFrame() + static_cast<int>(m_new_video_position * right_video_length);
-                m_pChannel_right->setVideoToFrame(right_frame);
+                m_pChannel_right->seekToFrame(right_frame);
                 break;
 
             case BOTH_CHANNELS:
                 left_frame = m_pChannel_left->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
                 right_frame = m_pChannel_right->getStartFrame() + static_cast<int>(m_new_video_position * m_combined_length);
-                m_pChannel_left->setVideoToFrame(left_frame);
-                m_pChannel_right->setVideoToFrame(right_frame);
+                m_pChannel_left->seekToFrame(left_frame);
+                m_pChannel_right->seekToFrame(right_frame);
                 break;
 
             default:

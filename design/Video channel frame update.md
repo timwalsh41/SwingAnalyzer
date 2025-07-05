@@ -1,54 +1,60 @@
 # Overview
 
-The video channel frame update can occur through the following mechanisms:
-- Internal playback
-- User initiated frame step
-- User initiated slider drag
+Video channel frame update is the process of retrieving and displaying a new video frame. The frame update process can occur through the following mechanisms:
+- **Internal playback**: Background thread managed by `VideoPlaybackController` with thread-safe frame buffer for continuous video playback at desired frame rate
+- **User initiated frame step**: Frame stepping with bounds checking via `VideoFrameManager`  
+- **User initiated slider drag**: Direct frame seeking through `Synchronizer`
 
-The update pathway for each of these is shown below
+The update pathway for each mechanism involves the modular VideoChannel architecture with components like `OpenCVVideoDecoder`, `ThreadSafeFrameBuffer`, `GTKImageUpdater`, and `VideoFrameManager`.
 
 ## Internal playback
 
-In internal playback, the displayed frame is updated periodically. We use a mutex to transfer the newly captured frame through a frame buffer to the displayed frame object, where it is then used to update the canvas image. At each frame update, we trigger a slider position update.
+In internal playback, the displayed frame is updated periodically by a background thread managed by the `VideoPlaybackController`. The `playbackWorkerFunction` runs in an independent thread, retrieves frames from the `OpenCVVideoDecoder`, stores them in a thread-safe frame buffer, and then signals the main thread via a `Glib::Dispatcher` to update the GUI. The main thread processes the frame through the `onFrameUpdate` dispatcher callback, which retrieves the frame from the buffer, resizes it, and updates the GTK canvas image. At each frame update, a position callback is triggered to update the slider as well to maintain synchronization.
 
 ```plantuml
 
 @startuml
 
-participant WorkerThread
+participant PlaybackController
 participant MainThread
 participant SyncManager
 
 box VideoChannel #LightBlue
-participant playVideoWorkerThread
-participant DispatchCallback
-participant updatePixBuf
-participant Dispatcher
+participant playbackWorkerFunction
+participant ThreadSafeFrameBuffer
+participant FrameUpdateDispatcher
+participant onFrameUpdate
+participant GTKImageUpdater
 end box
 
-activate WorkerThread
-WorkerThread -> playVideoWorkerThread : Periodic call
-activate playVideoWorkerThread
-note right: Thread-safe load\nof frame into buffer\nRetrieve next frame
-playVideoWorkerThread -> playVideoWorkerThread : Lock mutex\nCopy frame to buffer
-playVideoWorkerThread -> Dispatcher : emit()
-deactivate playVideoWorkerThread
+activate PlaybackController
+PlaybackController -> playbackWorkerFunction : Start playback thread
+activate playbackWorkerFunction
+note right: Get next frame from\nOpenCVVideoDecoder\nIncrement frame counter
+playbackWorkerFunction -> ThreadSafeFrameBuffer : updateFrame(cv::Mat)
+activate ThreadSafeFrameBuffer
+note right: Lock mutex\nClone frame to buffer
+deactivate ThreadSafeFrameBuffer
+playbackWorkerFunction -> FrameUpdateDispatcher : emit()
+deactivate playbackWorkerFunction
 
-Dispatcher -> MainThread : Signal callback
+FrameUpdateDispatcher -> MainThread : Signal callback
 activate MainThread
-MainThread -> DispatchCallback : DispatchCallback()
-activate DispatchCallback
-note right: Thread-safe copy\nof frame buffer\ninto display frame
-DispatchCallback -> DispatchCallback : Lock mutex\nResize frame buffer
-DispatchCallback -> updatePixBuf : updatePixBuf()
-activate updatePixBuf
-note right: Update displayed\nimage on canvas
-deactivate updatePixBuf
-DispatchCallback -> SyncManager : Update video\nposition callback
+MainThread -> onFrameUpdate : onFrameUpdate()
+activate onFrameUpdate
+onFrameUpdate -> ThreadSafeFrameBuffer : getDisplayFrame(target_size)
+activate ThreadSafeFrameBuffer
+note right: Lock mutex\nResize frame to target size\nReturn cloned frame
+deactivate ThreadSafeFrameBuffer
+onFrameUpdate -> GTKImageUpdater : updateImage(cv::Mat)
+activate GTKImageUpdater
+note right: Resize frame\nConvert BGR to RGB\nUpdate Goocanvas pixbuf
+deactivate GTKImageUpdater
+onFrameUpdate -> SyncManager : position_callback(frame, channel)
 activate SyncManager
-note right: Update slider
+note right: Update slider position
 deactivate SyncManager
-deactivate DispatchCallback
+deactivate onFrameUpdate
 deactivate MainThread
 
 @enduml
@@ -56,11 +62,11 @@ deactivate MainThread
 ```
 ## Externally triggered updates
 
-There are two paths to update the displayed frame: stepping by an offset, and setting the active frame index directly. These are very similar pathways that involve setting the frame index, retrieving the corresponding frame, and then updating the display. These operations are performed in a single thread, simplifying the data management.
+There are two paths to update the displayed frame: stepping by an offset, and setting the active frame index directly. Both use the same underlying mechanism involving the `seekToFrame` method, which validates the frame index, seeks to the frame in the video decoder, retrieves the frame data, updates the thread-safe frame buffer, and then updates the GUI display through the `GTKImageUpdater`. These operations are performed synchronously in the main thread.
 
 ### Slider drag
 
-The slider drag is handled in the synchronizer, which calculates the index of the frame that the video should be at. It triggers the video channel to load that frame. Since the update came from the slider itself, we do not trigger a slider position update.
+The slider drag is handled by the `Synchronizer`, which calculates the index of the frame that the video should be at based on the slider position. It calls the video channel's `seekToFrame` method, which loads the requested frame and updates the display. Since the update originated from the slider itself, no slider position update is triggered to avoid feedback loops.
 
 ```plantuml
 
@@ -68,17 +74,36 @@ The slider drag is handled in the synchronizer, which calculates the index of th
 
 participant Synchronizer
 box "VideoChannel" #LightBlue
-participant setVideoToFrame
-participant setActiveFrame
-participant updatePixBuf
+participant seekToFrame
+participant VideoDecoder
+participant ThreadSafeFrameBuffer
+participant GTKImageUpdater
 end box
 
-Synchronizer -> setVideoToFrame
-note right: Set active frame\nbased on input
-setVideoToFrame -> setActiveFrame
-note right: Load requested\nframe into\ndisplay frame
-setActiveFrame -> updatePixBuf
-note right: Update displayed\nimage on canvas
+Synchronizer -> seekToFrame : seekToFrame(frame_index)
+activate seekToFrame
+note right: Validate frame index\nStop playback if active\nUpdate current frame
+seekToFrame -> VideoDecoder : seekToFrame(frame_index)
+activate VideoDecoder
+note right: Seek to requested frame\nin video file
+deactivate VideoDecoder
+seekToFrame -> VideoDecoder : getCurrentFrame(frame_data)
+activate VideoDecoder
+note right: Get frame data\nat current position
+deactivate VideoDecoder
+seekToFrame -> ThreadSafeFrameBuffer : updateFrame(frame_data)
+activate ThreadSafeFrameBuffer
+note right: Lock mutex\nClone frame to buffer
+deactivate ThreadSafeFrameBuffer
+seekToFrame -> ThreadSafeFrameBuffer : getDisplayFrame(target_size)
+activate ThreadSafeFrameBuffer
+note right: Lock mutex\nResize and return frame
+deactivate ThreadSafeFrameBuffer
+seekToFrame -> GTKImageUpdater : updateImage(display_frame)
+activate GTKImageUpdater
+note right: Convert BGR to RGB\nUpdate Goocanvas pixbuf
+deactivate GTKImageUpdater
+deactivate seekToFrame
 
 @enduml
 
@@ -86,9 +111,9 @@ note right: Update displayed\nimage on canvas
 
 ### Frame step
 
-Here we step the frame by the provided offset, triggering a slider update at the end.
+Here we step the frame by the provided offset using the `VideoFrameManager` to calculate the new frame index with bounds checking, then call `seekToFrame` to load and display the new frame. This triggers a slider update at the end through the position callback.
 
-Right now frame steps can come from the Analyzer (in sync mode, requests come right from the buttons on the GUI) or the Synchronizer (in playback mode, step requests go to the Synchronizer and are then sent to both channels).
+Right now frame steps can come from the Analyzer (in sync mode, requests come directly from the buttons on the GUI) or the Synchronizer (in playback mode, step requests go to the Synchronizer and are then sent to both channels).
 
 ```plantuml
 
@@ -99,21 +124,46 @@ participant Synchronizer
 
 box "VideoChannel" #LightBlue
 participant stepFrame
-participant setActiveFrame
-participant updatePixBuf
+participant VideoFrameManager
+participant seekToFrame
+participant VideoDecoder
+participant ThreadSafeFrameBuffer
+participant GTKImageUpdater
 end box
 
 alt Analyzer induced
-    Analyzer -> stepFrame
+    Analyzer -> stepFrame : stepFrame(offset)
 else Synchronizer induced
-    Synchronizer -> stepFrame
+    Synchronizer -> stepFrame : stepFrame(offset)
 end
-stepFrame -> setActiveFrame
-note right: Load requested\nframe into\ndisplay frame
-setActiveFrame -> updatePixBuf
+activate stepFrame
+note right: Validate state\nStop playback if active
+stepFrame -> VideoFrameManager : stepFrame(current_frame, offset)
+activate VideoFrameManager
+note right: Calculate new frame\nwith bounds checking
+deactivate VideoFrameManager
+stepFrame -> seekToFrame : seekToFrame(new_frame)
+activate seekToFrame
+seekToFrame -> VideoDecoder : seekToFrame(new_frame)
+activate VideoDecoder
+deactivate VideoDecoder
+seekToFrame -> VideoDecoder : getCurrentFrame(frame_data)
+activate VideoDecoder
+deactivate VideoDecoder
+seekToFrame -> ThreadSafeFrameBuffer : updateFrame(frame_data)
+activate ThreadSafeFrameBuffer
+deactivate ThreadSafeFrameBuffer
+seekToFrame -> ThreadSafeFrameBuffer : getDisplayFrame(target_size)
+activate ThreadSafeFrameBuffer
+deactivate ThreadSafeFrameBuffer
+seekToFrame -> GTKImageUpdater : updateImage(display_frame)
+activate GTKImageUpdater
 note right: Update displayed\nimage on canvas
-stepFrame -> Synchronizer: Update video\nposition callback
-note left: Update slider
+deactivate GTKImageUpdater
+deactivate seekToFrame
+stepFrame -> Synchronizer: position_callback(frame, channel)
+note left: Update slider position
+deactivate stepFrame
 
 @enduml
 
