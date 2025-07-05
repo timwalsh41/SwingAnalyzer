@@ -43,3 +43,30 @@ add_executable(swing_analyzer   src/main.cpp
                                 src/Profiler.cpp)
 
 target_link_libraries(swing_analyzer ${GTKMM_LIBRARIES} ${GOOCANVASMM_LIBRARIES} ${OpenCV_LIBS})
+
+# GoogleTest setup (download if not found)
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+# Add test executable for all test/*.cpp files
+file(GLOB TEST_SOURCES test/*.cpp)
+add_executable(unit_tests ${TEST_SOURCES}
+    src/OpenCVVideoDecoder.cpp
+    src/GTKImageUpdater.cpp
+    src/Logger.cpp)
+
+target_link_libraries(unit_tests
+    gtest_main
+    ${GTKMM_LIBRARIES}
+    ${GOOCANVASMM_LIBRARIES}
+    ${OpenCV_LIBS}
+)
+
+include(GoogleTest)
+gtest_discover_tests(unit_tests)
