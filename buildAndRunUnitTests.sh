@@ -25,7 +25,7 @@ make "${UNIT_TEST_EXECUTABLE}"
 # Run the unit tests
 echo "Running unit tests..."
 if [ -x "./${UNIT_TEST_EXECUTABLE}" ]; then
-    ./"${UNIT_TEST_EXECUTABLE}"
+    time ./"${UNIT_TEST_EXECUTABLE}"
 else
     echo "Unit test executable '${UNIT_TEST_EXECUTABLE}' not found or not executable."
     echo "If using CTest, you can run: ctest --output-on-failure"

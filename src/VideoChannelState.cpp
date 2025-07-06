@@ -1,23 +1,29 @@
 #include <VideoChannelState.h>
+
 #include <unordered_map>
 
 namespace VideoPlayback
 {
 
-bool VideoChannelStateMachine::transition(VideoChannelEvent event) {
-    if (!isValidTransition(event)) {
+bool VideoChannelStateMachine::transition(VideoChannelEvent event)
+{
+    if (!isValidTransition(event))
+    {
         return false;
     }
 
-    switch (m_current_state) {
+    switch (m_current_state)
+    {
         case VideoChannelState::UNLOADED:
-            if (event == VideoChannelEvent::LOAD_VIDEO) {
+            if (event == VideoChannelEvent::LOAD_VIDEO)
+            {
                 m_current_state = VideoChannelState::STOPPED;
             }
             break;
 
         case VideoChannelState::STOPPED:
-            switch (event) {
+            switch (event)
+            {
                 case VideoChannelEvent::PLAY:
                     m_current_state = VideoChannelState::PLAYING;
                     break;
@@ -34,7 +40,8 @@ bool VideoChannelStateMachine::transition(VideoChannelEvent event) {
             break;
 
         case VideoChannelState::PLAYING:
-            switch (event) {
+            switch (event)
+            {
                 case VideoChannelEvent::PAUSE:
                 case VideoChannelEvent::STEP_FRAME:
                 case VideoChannelEvent::SEEK_FRAME:
@@ -52,8 +59,10 @@ bool VideoChannelStateMachine::transition(VideoChannelEvent event) {
     return true;
 }
 
-bool VideoChannelStateMachine::isValidTransition(VideoChannelEvent event) const {
-    switch (m_current_state) {
+bool VideoChannelStateMachine::isValidTransition(VideoChannelEvent event) const
+{
+    switch (m_current_state)
+    {
         case VideoChannelState::UNLOADED:
             return event == VideoChannelEvent::LOAD_VIDEO;
 
@@ -73,7 +82,8 @@ bool VideoChannelStateMachine::isValidTransition(VideoChannelEvent event) const 
     return false;
 }
 
-const char* VideoChannelStateMachine::getStateName() const {
+const char* VideoChannelStateMachine::getStateName() const
+{
     static const std::unordered_map<VideoChannelState, const char*> state_names = {
         {VideoChannelState::UNLOADED, "UNLOADED"},
         {VideoChannelState::STOPPED, "STOPPED"},
@@ -84,7 +94,8 @@ const char* VideoChannelStateMachine::getStateName() const {
     return (it != state_names.end()) ? it->second : "UNKNOWN";
 }
 
-const char* VideoChannelStateMachine::getEventName(VideoChannelEvent event) {
+const char* VideoChannelStateMachine::getEventName(VideoChannelEvent event)
+{
     static const std::unordered_map<VideoChannelEvent, const char*> event_names = {
         {VideoChannelEvent::LOAD_VIDEO, "LOAD_VIDEO"},
         {VideoChannelEvent::UNLOAD_VIDEO, "UNLOAD_VIDEO"},

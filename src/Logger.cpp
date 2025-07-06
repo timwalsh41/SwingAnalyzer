@@ -1,10 +1,10 @@
+#include <Logger.h>
+
 #include <cstdarg>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
-
-#include <Logger.h>
 
 Logger *Logger::m_pInstance = nullptr;
 std::once_flag Logger::m_once_flag;

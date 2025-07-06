@@ -4,43 +4,53 @@ namespace VideoPlayback
 {
 
 VideoPlaybackController::VideoPlaybackController() 
-    : m_should_continue(false), m_frame_time_us(0), m_logger(Logger::get()) {
+    : m_should_continue(false), m_frame_time_us(0), m_logger(Logger::get())
+{
 }
 
-VideoPlaybackController::~VideoPlaybackController() {
+VideoPlaybackController::~VideoPlaybackController()
+{
     stopPlayback();
 }
 
-void VideoPlaybackController::startPlayback(std::function<void()> playback_function) {
-    if (isPlaying()) {
+void VideoPlaybackController::startPlayback(std::function<void()> playback_function)
+{
+    if (isPlaying())
+    {
         m_logger.warn("Playback already active, stopping previous playback");
         stopPlayback();
     }
 
     m_should_continue = true;
-    m_playback_thread = std::thread([this, playback_function]() {
+    m_playback_thread = std::thread([this, playback_function]()
+    {
         m_logger.debug("Playback thread started");
         playback_function();
         m_logger.debug("Playback thread finished");
     });
 }
 
-void VideoPlaybackController::stopPlayback() {
+void VideoPlaybackController::stopPlayback()
+{
     m_should_continue = false;
     cleanup();
 }
 
-bool VideoPlaybackController::isPlaying() const {
+bool VideoPlaybackController::isPlaying() const
+{
     return m_should_continue.load() && m_playback_thread.joinable();
 }
 
-void VideoPlaybackController::setFramerate(float fps, float multiplier) {
-    if (fps <= 0 || multiplier <= 0) {
+void VideoPlaybackController::setFramerate(float fps, float multiplier)
+{
+    if (fps <= 0 || multiplier <= 0)
+    {
         m_logger.warn("Invalid framerate parameters: fps=%.2f, multiplier=%.2f", fps, multiplier);
         return;
     }
 
-    if (multiplier > MAX_FRAMERATE_MULTIPLIER || multiplier < MIN_FRAMERATE_MULTIPLIER) {
+    if (multiplier > MAX_FRAMERATE_MULTIPLIER || multiplier < MIN_FRAMERATE_MULTIPLIER)
+    {
         m_logger.warn("Framerate multiplier %.3f out of range (%.3f-%.3f)", 
                      multiplier, MIN_FRAMERATE_MULTIPLIER, MAX_FRAMERATE_MULTIPLIER);
         return;
@@ -51,12 +61,15 @@ void VideoPlaybackController::setFramerate(float fps, float multiplier) {
                   m_frame_time_us / 1000.0f, fps, multiplier);
 }
 
-std::chrono::microseconds VideoPlaybackController::getFrameInterval() const {
+std::chrono::microseconds VideoPlaybackController::getFrameInterval() const
+{
     return std::chrono::microseconds(static_cast<long int>(m_frame_time_us));
 }
 
-void VideoPlaybackController::cleanup() {
-    if (m_playback_thread.joinable()) {
+void VideoPlaybackController::cleanup()
+{
+    if (m_playback_thread.joinable())
+    {
         m_playback_thread.join();
     }
 }

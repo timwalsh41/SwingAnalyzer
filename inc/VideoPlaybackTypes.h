@@ -17,8 +17,7 @@ enum VideoLoadStatus
 {
     VIDEO_LOAD_SUCCESS,
     VIDEO_LOAD_FILE_NOT_FOUND,
-    VIDEO_LOAD_INVALID_TYPE,
-    VIDEO_LOAD_UNKNOWN_ERROR
+    VIDEO_LOAD_ERROR
 };
 
 enum VideoPlaybackStatus

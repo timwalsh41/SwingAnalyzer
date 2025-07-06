@@ -59,7 +59,9 @@ file(GLOB TEST_SOURCES test/*.cpp)
 add_executable(unit_tests ${TEST_SOURCES}
     src/OpenCVVideoDecoder.cpp
     src/GTKImageUpdater.cpp
-    src/Logger.cpp)
+    src/Logger.cpp
+    src/ThreadSafeFrameBuffer.cpp
+    src/VideoFrameManager.cpp)
 
 target_link_libraries(unit_tests
     gtest_main
