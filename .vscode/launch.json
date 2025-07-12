@@ -20,6 +20,26 @@
                 }
             ],
             "preLaunchTask": "cmake debug build" // assuming you have a task named 'build' that runs 'cmake --build'
+        },
+        {
+            "name": "(gdb) Debug Unit Tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/unit_tests",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "cmake debug build" // adjust the task if necessary
         }
     ]
 }

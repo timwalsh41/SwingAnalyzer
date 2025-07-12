@@ -11,13 +11,13 @@ OpenCVVideoDecoder::OpenCVVideoDecoder()
 
 VideoLoadStatus OpenCVVideoDecoder::loadVideo(const std::string& path)
 {
-    m_video_capture.open(path);
-
     if (!std::filesystem::exists(path))
     {
         m_logger.error("Video file not found: %s", path.c_str());
         return VIDEO_LOAD_FILE_NOT_FOUND;
     }
+
+    m_video_capture.open(path);
 
     if (!m_video_capture.isOpened())
     {
@@ -40,7 +40,7 @@ VideoLoadStatus OpenCVVideoDecoder::loadVideo(const std::string& path)
     return VIDEO_LOAD_SUCCESS;
 }
 
-void OpenCVVideoDecoder::unloadVideo()
+bool OpenCVVideoDecoder::unloadVideo()
 {
     if (m_is_loaded)
     {
@@ -49,6 +49,8 @@ void OpenCVVideoDecoder::unloadVideo()
         m_properties = VideoProperties{};
         m_logger.debug("Video unloaded");
     }
+
+    return true;
 }
 
 bool OpenCVVideoDecoder::getNextFrame(cv::Mat& frame)

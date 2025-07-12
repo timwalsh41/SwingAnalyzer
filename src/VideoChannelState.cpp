@@ -34,6 +34,9 @@ bool VideoChannelStateMachine::transition(VideoChannelEvent event)
                 case VideoChannelEvent::SEEK_FRAME:
                     // Stay in STOPPED state
                     break;
+                case VideoChannelEvent::ERROR_OCCURRED:
+                    m_current_state = VideoChannelState::UNLOADED;
+                    break;
                 default:
                     return false;
             }
@@ -48,6 +51,7 @@ bool VideoChannelStateMachine::transition(VideoChannelEvent event)
                     m_current_state = VideoChannelState::STOPPED;
                     break;
                 case VideoChannelEvent::UNLOAD_VIDEO:
+                case VideoChannelEvent::ERROR_OCCURRED:
                     m_current_state = VideoChannelState::UNLOADED;
                     break;
                 default:
@@ -70,13 +74,15 @@ bool VideoChannelStateMachine::isValidTransition(VideoChannelEvent event) const
             return event == VideoChannelEvent::PLAY ||
                    event == VideoChannelEvent::UNLOAD_VIDEO ||
                    event == VideoChannelEvent::STEP_FRAME ||
-                   event == VideoChannelEvent::SEEK_FRAME;
+                   event == VideoChannelEvent::SEEK_FRAME ||
+                   event == VideoChannelEvent::ERROR_OCCURRED;
 
         case VideoChannelState::PLAYING:
             return event == VideoChannelEvent::PAUSE ||
                    event == VideoChannelEvent::UNLOAD_VIDEO ||
                    event == VideoChannelEvent::STEP_FRAME ||
-                   event == VideoChannelEvent::SEEK_FRAME;
+                   event == VideoChannelEvent::SEEK_FRAME ||
+                   event == VideoChannelEvent::ERROR_OCCURRED;
     }
 
     return false;

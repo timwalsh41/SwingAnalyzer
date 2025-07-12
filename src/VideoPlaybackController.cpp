@@ -21,7 +21,7 @@ void VideoPlaybackController::startPlayback(std::function<void()> playback_funct
         stopPlayback();
     }
 
-    m_should_continue = true;
+    m_should_continue.store(true);
     m_playback_thread = std::thread([this, playback_function]()
     {
         m_logger.debug("Playback thread started");
@@ -32,7 +32,7 @@ void VideoPlaybackController::startPlayback(std::function<void()> playback_funct
 
 void VideoPlaybackController::stopPlayback()
 {
-    m_should_continue = false;
+    m_should_continue.store(false);
     cleanup();
 }
 

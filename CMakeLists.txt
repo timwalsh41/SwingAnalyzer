@@ -61,7 +61,11 @@ add_executable(unit_tests ${TEST_SOURCES}
     src/GTKImageUpdater.cpp
     src/Logger.cpp
     src/ThreadSafeFrameBuffer.cpp
-    src/VideoFrameManager.cpp)
+    src/VideoFrameManager.cpp
+    src/VideoChannelState.cpp
+    src/VideoPlaybackController.cpp
+    src/VideoChannel.cpp
+    src/Profiler.cpp)
 
 target_link_libraries(unit_tests
     gtest_main

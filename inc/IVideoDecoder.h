@@ -23,7 +23,7 @@ public:
     virtual ~IVideoDecoder() = default;
 
     virtual VideoLoadStatus loadVideo(const std::string& path) = 0;
-    virtual void unloadVideo() = 0;
+    virtual bool unloadVideo() = 0;
     virtual bool getNextFrame(cv::Mat& frame) = 0;
     virtual bool seekToFrame(int frame_number) = 0;
     virtual bool getCurrentFrame(cv::Mat& frame) = 0;

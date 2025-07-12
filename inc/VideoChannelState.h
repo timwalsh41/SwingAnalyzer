@@ -36,6 +36,9 @@ public:
 
     // State transitions
     bool transition(VideoChannelEvent event);
+    
+    // Check if transition is valid without performing it
+    bool isValidTransition(VideoChannelEvent event) const;
 
     // Get state name for logging
     const char* getStateName() const;
@@ -45,8 +48,6 @@ public:
 
 private:
     VideoChannelState m_current_state;
-
-    bool isValidTransition(VideoChannelEvent event) const;
 };
 
 } // namespace VideoPlayback

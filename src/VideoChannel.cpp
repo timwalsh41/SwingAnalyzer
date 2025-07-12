@@ -67,18 +67,30 @@ VideoChannelState VideoChannel::getState() const
 
 VideoLoadStatus VideoChannel::loadVideo(const std::string& path)
 {
-    if (!transitionState(VideoChannelEvent::LOAD_VIDEO))
+    // Load video attempt may fail, so check if it is a valid transition, then attempt to load video, then
+    // transition state if successful
+
+    if (!m_state_machine->isValidTransition(VideoChannelEvent::LOAD_VIDEO))
     {
         m_logger.warn("Cannot load video in current state: %s", m_state_machine->getStateName());
         return VIDEO_LOAD_ERROR;
     }
     
+    // Attempt to load the video first
     VideoLoadStatus status = m_video_decoder->loadVideo(path);
     if (status != VIDEO_LOAD_SUCCESS)
     {
-        // Revert state transition
-        m_state_machine->transition(VideoChannelEvent::ERROR_OCCURRED);
+        m_logger.error("Failed to load video: %s", path.c_str());
         return status;
+    }
+    
+    // Only transition state if video loading succeeded
+    if (!m_state_machine->transition(VideoChannelEvent::LOAD_VIDEO))
+    {
+        // This should not happen since we already checked isValidTransition above
+        m_logger.error("State transition failed after successful video load - this should not happen");
+        m_video_decoder->unloadVideo(); // Clean up the loaded video
+        return VIDEO_LOAD_ERROR;
     }
     
     // Setup frame management
@@ -108,17 +120,31 @@ void VideoChannel::unloadVideo()
     {
         pauseVideo();
     }
-    
-    if (transitionState(VideoChannelEvent::UNLOAD_VIDEO))
+
+    // unload video attempt may fail, so check if it is a valid transition, then attempt to unload video, then
+    // transition state if successful
+
+    if (!m_state_machine->isValidTransition(VideoChannelEvent::UNLOAD_VIDEO))
     {
-        m_video_decoder->unloadVideo();
+        m_logger.warn("Cannot unload video in current state: %s", m_state_machine->getStateName());
+        return;
+    }
+    
+    if (m_video_decoder->unloadVideo())
+    {
+        transitionState(VideoChannelEvent::UNLOAD_VIDEO);
         m_current_frame = 0;
         m_logger.info("Unloaded %s channel video", channel_name_map.at(m_channel_id));
+    }
+    else
+    {
+        m_logger.error("Failed to unload %s channel video", channel_name_map.at(m_channel_id));
     }
 }
 
 void VideoChannel::playVideo()
 {
+    // PLAY event will not fail as long as state is valid, so we can directly call the transition function here
     if (!transitionState(VideoChannelEvent::PLAY))
     {
         m_logger.warn("Cannot play video in current state: %s", m_state_machine->getStateName());
@@ -141,6 +167,7 @@ void VideoChannel::playVideo()
 
 void VideoChannel::pauseVideo()
 {
+    // PAUSE event will not fail if the state is valid, so we can directly call the transition function
     if (transitionState(VideoChannelEvent::PAUSE))
     {
         m_playback_controller->stopPlayback();
@@ -161,6 +188,7 @@ void VideoChannel::stepFrame(int offset)
     // Stop playback if active
     if (isPlaying())
     {
+        // stop playback call will not fail, so we can directly call the state transition here
         transitionState(VideoChannelEvent::STEP_FRAME);
         m_playback_controller->stopPlayback();
     }
@@ -191,6 +219,7 @@ void VideoChannel::seekToFrame(int frame)
     // Stop playback if active
     if (isPlaying())
     {
+        // stop playback call will not fail, so we can directly call the state transition here
         transitionState(VideoChannelEvent::SEEK_FRAME);
         m_playback_controller->stopPlayback();
     }
@@ -233,6 +262,7 @@ void VideoChannel::setStartFrame(int start)
     
     if (isPlaying())
     {
+        // stop playback will not fail so we can directly call the state transition here
         transitionState(VideoChannelEvent::PAUSE);
         m_playback_controller->stopPlayback();
     }
@@ -246,6 +276,7 @@ void VideoChannel::setEndFrame(int end)
     
     if (isPlaying())
     {
+        // stop playback will not fail so we can directly call the state transition here
         transitionState(VideoChannelEvent::PAUSE);
         m_playback_controller->stopPlayback();
     }
@@ -490,6 +521,8 @@ void VideoChannel::onFrameUpdate()
 
 void VideoChannel::onPlaybackComplete()
 {
+    // this call occurs when the playback worker function finishes so it is fine to directly
+    // transition the state without error checking
     transitionState(VideoChannelEvent::PAUSE);
     
     if (m_complete_callback)

@@ -15,7 +15,7 @@ public:
     ~OpenCVVideoDecoder() override = default;
 
     VideoLoadStatus loadVideo(const std::string& path) override;
-    void unloadVideo() override;
+    bool unloadVideo() override;
     bool getNextFrame(cv::Mat& frame) override;
     bool seekToFrame(int frame_number) override;
     bool getCurrentFrame(cv::Mat& frame) override;
