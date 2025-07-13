@@ -2,21 +2,25 @@
 
 ## Synchronization theory of operations
 
-The video synchronization system enables users to time-align two video channels (left and right) and then play them back in perfect synchronization. The system is built around three core components that work together: the **SyncManager**, **Synchronizer**, and **VideoChannel** classes.
+The video synchronization system enables users to time-align two video channels (left and right) and then play them back with events synchronized between the two. The system is built around four core components that work together: the **VideoSynchronizationEngine**, **SyncManager**, **Synchronizer**, and **VideoChannel** classes.
 
 ### Component Overview
 
-**SyncManager** serves as the top-level orchestrator that:
-- Owns two `VideoChannel` instances (left and right)
+**VideoSynchronizationEngine** serves as the top-level business logic coordinator that:
+- Manages observer pattern for GUI notifications
+- Coordinates high-level video synchronization operations
+- Provides clean interface for controller layer integration
+- Delegates state management to SyncManagerCreate system architecture class diagramthat:
+- Owns two `VideoChannel` instances (left and right) using shared_ptr
 - Implements a state machine to manage sync and playback modes
-- Routes GUI events to the appropriate state handlers
-- Coordinates callbacks between video channels and the GUI
+- Routes events to the appropriate state handlers
+- Manages observer notifications for video position changes
 
 **Synchronizer** manages the synchronization logic and data:
 - Calculates frame offsets between video channels
 - Handles framerate differences between videos
 - Manages synchronized playback parameters
-- Updates GUI elements (sliders) based on video position changes
+- Uses observer pattern for GUI updates instead of direct calls
 
 **VideoChannel** handles individual video playback with a modular architecture:
 - **Core Components**:
@@ -62,12 +66,16 @@ Once synchronization parameters are established, the system maintains perfect al
 
 ### Frame Update Mechanism
 
-The system uses a callback-based approach to maintain GUI synchronization:
+The system uses an observer pattern approach to maintain GUI synchronization:
 
-1. **Video Channel Callbacks**: Each `VideoChannel` is configured with a callback function that triggers when its active frame changes
+1. **Video Channel Callbacks**: Each `VideoChannel` is configured with a callback function that triggers when its active frame changes during playback
 2. **State Machine Routing**: The `SyncManager` receives these callbacks and routes them through the current state's event handler
 3. **Synchronizer Processing**: The `Synchronizer` calculates the normalized position (0.0 to 1.0) based on the channel's start/end frames
-4. **GUI Updates**: The position is passed to the `Analyzer` GUI class to update the appropriate slider(s)
+4. **Observer Notifications**: The `Synchronizer` notifies registered observers through the `IVideoSynchronizationObserver` interface
+5. **Controller Mediation**: The `AnalyzerController` receives observer notifications and updates the GUI through `AnalyzerGui`
+6. **GUI Updates**: The `AnalyzerGui` updates the appropriate slider(s) based on the received position information
+
+This observer-based approach provides clean separation between business logic and GUI layers.
 
 ### Framerate Handling
 
@@ -149,29 +157,47 @@ The table below describes the events handled by the state machine. Each event in
 
 ## Description
 
-The classies involved in synchronization are:
-- `AnalyzerWindow` extends `Gtk::Window` and represents the GUI window itself
-- `Analyzer` provides an interface that encapsulates the GTK GUI implementation
-- `SyncManager` is the top level implementation of the video playback and synchronization functionality
-    - GUI events are passed from the `Analyzer` to the `SyncManager`, and then handled through the synchronization state machine
-        - In some cases, data from the event are passed directly from `SyncManager` to `Synchronizer`
-        - If needed, the event handler within the state then triggers a function call to `Synchronizer` to process the provided data
-    - Likewise, where events during video playback require action in the GUI, e.g. video playback triggering update of the position sliders, these are passed through `SyncManager` to the `Analyzer`
-- `Synchronizer` manages the state data related to the synchronization between the two channels, and implements methods for manipulation of the data
-    - The `SyncManager` and the individual states are declared as friend classes to the `Synchronizer`
-- `ISynchronizerState` implements the interface to the state machine state implmentation
-    - Member variables accessible to the subclasses include a pointer to the `Synchronizer` and the logger
-    - There is also a protected member variable for the state name string, with an accessor function
-    - The concrete states implemented are:
-        - `SynchronizerStateSync`: the state representing sync mode of operation where the user can adjust the two video channels independently to time sync them
-        - `SynchronizerStateSyncToPlayback`: this is used as a transition state between sync mode and playback mode, it is used to simply set the synchronization parameters and then will immediately transition to the playback (paused) mode
-        - `SynchronizerStatePlaybackPaused`: this state represents the playback mode when the videos are paused
-        - `SynchronizerStatePlaybackPlaying`: this state represents the playback mode when the videos are playing
-- `VideoChannel` is the video channel implementation with modular architecture:
-    - Uses a state machine (`VideoChannelStateMachine`) for clean state management
-    - Delegates video decoding to `IVideoDecoder` interface (implemented by `OpenCVVideoDecoder`)
-    - Delegates GUI updates to `IGUIImageUpdater` interface (implemented by `GTKImageUpdater`)
-    - Uses helper classes for frame management, playback control, and thread-safe buffering
+The classes involved in synchronization are:
+
+**GUI Layer:**
+- `AnalyzerWindow` extends `Gtk::Window` and represents the main application window
+- `AnalyzerGui` provides pure GUI management focused on GTK widget handling and user interface components
+
+**Controller Layer:**
+- `AnalyzerController` implements both `IVideoSynchronizationController` and `IVideoSynchronizationObserver` interfaces
+  - Mediates between GUI events and business logic using dependency injection
+  - Provides clean separation of concerns between presentation and business logic through observer pattern implementation
+
+**Business Logic Layer:**
+- `VideoSynchronizationEngine` serves as the main business logic coordinator
+  - Manages observer pattern for loose coupling with GUI layer
+  - Coordinates high-level video synchronization operations
+  - Provides clean interface for controller integration
+- `SyncManager` is the state machine orchestrator for video playback and synchronization
+  - Owns video channels using shared_ptr ownership model to share with `Synchronizer`
+  - Routes events through the synchronization state machine
+  - Manages observer notifications for position updates
+- `Synchronizer` manages the core synchronization logic and data
+  - Calculates frame offsets and handles framerate differences
+  - Uses observer pattern to route event information to the GUI
+  - Friend classes with SyncManager and synchronization state machine states for controlled access
+
+**State Machine:**
+- `ISynchronizerState` implements the interface for state machine states
+  - Provides access to Synchronizer and logger for state implementations
+  - Contains state name and event handling interface
+  - The concrete states implemented are:
+    - `SynchronizerStateSync`: Independent video channel control for manual alignment
+    - `SynchronizerStateSyncToPlayback`: Transition state for offset calculation and parameter setup
+    - `SynchronizerStatePlaybackPaused`: Synchronized playback in paused state
+    - `SynchronizerStatePlaybackPlaying`: Synchronized playback in playing state
+
+**Video Infrastructure:**
+- `VideoChannel` implements the logic for loading and playback of a single video channel
+  - Uses state machine (`VideoChannelStateMachine`) for clean state management
+  - Delegates video decoding to `IVideoDecoder` interface (implemented by `OpenCVVideoDecoder`)
+  - Delegates GUI updates to `IGUIImageUpdater` interface (implemented by `GTKImageUpdater`)
+  - Uses helper classes for frame management, playback control, and thread-safe buffering
 
 ## Diagram
 
@@ -179,39 +205,150 @@ The classies involved in synchronization are:
 
 @startuml
 
-object AnalyzerWindow
-object Analyzer
-object SyncManager
-object Synchronizer
-object ISynchronizerState
-object SynchronizerStateSync
-object SynchronizerStateSyncToPlayback
-object SynchronizerStatePlaybackPaused
-object SynchronizerStatePlaybackPlaying
+package "GUI Layer" {
+    class AnalyzerWindow {
+        +AnalyzerWindow()
+        -m_pController: shared_ptr<AnalyzerController>
+        -m_pGui: unique_ptr<AnalyzerGui>
+        -m_builder: Glib::RefPtr<Gtk::Builder>
+    }
+    
+    class AnalyzerGui {
+        +AnalyzerGui()
+        +setVideoRenderer()
+        +updateVideoPosition()
+        +syncModeToggle()
+        -m_controller: IVideoSynchronizationController*
+        -m_guiObjects: AnalyzerGuiObjects
+        -m_canvas_left: Goocanvas::Canvas*
+        -m_canvas_right: Goocanvas::Canvas*
+    }
+}
 
-' VideoChannel components
-object VideoChannel
-object VideoChannelStateMachine
-object IVideoDecoder
-object OpenCVVideoDecoder
-object IGUIImageUpdater
-object GTKImageUpdater
-object VideoFrameManager
-object VideoPlaybackController
-object ThreadSafeFrameBuffer
+package "Controller Layer" {
+    interface IVideoSynchronizationController {
+        +playVideo()
+        +pauseVideo()
+        +stepVideo()
+        +setVideoPosition()
+        +loadVideo()
+        +setSyncMode()
+    }
+    
+    interface IVideoSynchronizationObserver {
+        +onVideoPositionChanged()
+        +onPlaybackStateChanged()
+        +onSyncModeChanged()
+        +onVideoLoaded()
+    }
+    
+    class AnalyzerController {
+        +AnalyzerController()
+        +initialize()
+        +getVideoChannel()
+        -m_gui: AnalyzerGui*
+        -m_engine: shared_ptr<VideoSynchronizationEngine>
+    }
+}
+
+package "Business Logic Layer" {
+    class VideoSynchronizationEngine {
+        +VideoSynchronizationEngine()
+        +addObserver()
+        +playVideo()
+        +loadVideo()
+        +start()
+        -m_syncManager: unique_ptr<SyncManager>
+        -m_observers: vector<weak_ptr<IVideoSynchronizationObserver>>
+    }
+    
+    class SyncManager {
+        +SyncManager()
+        +handleEvent()
+        +setObserver()
+        +start()
+        -m_channel_left: shared_ptr<VideoChannel>
+        -m_channel_right: shared_ptr<VideoChannel>
+        -m_synchronizer: Synchronizer
+        -m_state: unique_ptr<ISynchronizerState>
+        -m_observer: weak_ptr<IVideoSynchronizationObserver>
+    }
+    
+    class Synchronizer {
+        +setObserver()
+        +calculateFramerateRatio()
+        +stepVideos()
+        +videoPositionUpdate()
+        +videoFrameUpdate()
+        -m_pChannel_left: shared_ptr<VideoChannel>
+        -m_pChannel_right: shared_ptr<VideoChannel>
+        -m_observer: weak_ptr<IVideoSynchronizationObserver>
+        -m_video_frame_offset: int
+        -m_framerate_ratio: float
+    }
+}
+
+package "State Machine" {
+    interface ISynchronizerState {
+        +handleEvent()
+        +getName()
+        #m_pSynchronizer: Synchronizer*
+        #m_name: string
+    }
+    
+    class SynchronizerStateSync
+    class SynchronizerStateSyncToPlayback
+    class SynchronizerStatePlaybackPaused
+    class SynchronizerStatePlaybackPlaying
+}
+
+package "Video Infrastructure" {
+    class VideoChannel {
+        +VideoChannel()
+        +loadVideo()
+        +playVideo()
+        +pauseVideo()
+        +stepFrame()
+        +getImage()
+        -m_state_machine: unique_ptr<VideoChannelStateMachine>
+        -m_video_decoder: unique_ptr<IVideoDecoder>
+        -m_gui_updater: unique_ptr<IGUIImageUpdater>
+        -m_frame_manager: unique_ptr<VideoFrameManager>
+        -m_playback_controller: unique_ptr<VideoPlaybackController>
+        -m_frame_buffer: unique_ptr<ThreadSafeFrameBuffer>
+    }
+    
+    class VideoChannelStateMachine
+    interface IVideoDecoder
+    class OpenCVVideoDecoder
+    interface IGUIImageUpdater
+    class GTKImageUpdater
+    class VideoFrameManager
+    class VideoPlaybackController
+    class ThreadSafeFrameBuffer
+}
+
+' Layer relationships - Clean separation with observer pattern
+AnalyzerWindow *-- AnalyzerGui
+AnalyzerWindow o-- AnalyzerController
+AnalyzerGui --> IVideoSynchronizationController
+AnalyzerController ..|> IVideoSynchronizationController
+AnalyzerController ..|> IVideoSynchronizationObserver
+AnalyzerController o-- VideoSynchronizationEngine
+
+' Business logic relationships
+VideoSynchronizationEngine *-- SyncManager
+SyncManager *-- Synchronizer
+SyncManager o-- VideoChannel
+Synchronizer --> VideoChannel
 
 ' State machine relationships
-SyncManager *-- ISynchronizerState
-ISynchronizerState <|-- SynchronizerStatePlaybackPlaying
-ISynchronizerState <|-- SynchronizerStatePlaybackPaused
+SyncManager o-- ISynchronizerState
 ISynchronizerState <|-- SynchronizerStateSync
 ISynchronizerState <|-- SynchronizerStateSyncToPlayback
+ISynchronizerState <|-- SynchronizerStatePlaybackPaused
+ISynchronizerState <|-- SynchronizerStatePlaybackPlaying
 Synchronizer <-- ISynchronizerState
-SyncManager *-- Synchronizer
-
-' VideoChannel relationships
-SyncManager o-- VideoChannel
-VideoChannel <-- Synchronizer
 
 ' VideoChannel internal architecture
 VideoChannel *-- VideoChannelStateMachine
@@ -225,9 +362,97 @@ VideoChannel *-- ThreadSafeFrameBuffer
 IVideoDecoder <|-- OpenCVVideoDecoder
 IGUIImageUpdater <|-- GTKImageUpdater
 
-' GUI relationships
-Analyzer o-- SyncManager
-AnalyzerWindow *-- Analyzer
+' Observer pattern relationships (shown with dashed lines to emphasize loose coupling)
+VideoSynchronizationEngine ..> IVideoSynchronizationObserver : notifies
+SyncManager ..> IVideoSynchronizationObserver : notifies
+@enduml
+
+```
+
+## Video Position Update Sequence
+
+The following sequence diagram shows how video position updates flow through the new observer-based architecture:
+
+```plantuml
+
+@startuml
+
+participant "VideoChannel" as VC
+participant "SyncManager" as SM
+participant "Synchronizer" as SY
+participant "VideoSynchronizationEngine" as VSE
+participant "AnalyzerController" as AC
+participant "AnalyzerGui" as AG
+
+note over VC, AG : Video Position Update Flow (Observer Pattern)
+
+VC -> SM : videoFrameUpdate(frame, channel)
+note right of VC : Callback from video playback
+
+SM -> SM : handleEvent(VIDEO_FRAME_UPDATE, channel)
+note right of SM : Route through state machine
+
+SM -> SY : (via current state) videoFrameUpdate(channel, update_joint_slider)
+note right of SM : State delegates to synchronizer
+
+SY -> SY : Calculate normalized position (0.0-1.0)
+note right of SY : Based on start/end frames
+
+SY -> VSE : notifyObservers(onVideoPositionChanged)
+note right of SY : Observer pattern notification
+
+VSE -> AC : onVideoPositionChanged(channel, position)
+note right of VSE : Through weak_ptr observer
+
+AC -> AG : updateVideoPosition(channel, position)
+note right of AC : Controller updates GUI
+
+AG -> AG : Update slider widget
+note right of AG : Pure GUI operation
+
+note over VC, AG : Clean separation: Business logic → Observer → Controller → GUI
+
+@enduml
+
+```
+
+## User Interaction Sequence
+
+The following sequence diagram shows how user interactions flow from GUI to business logic:
+
+```plantuml
+
+@startuml
+
+participant "AnalyzerGui" as AG
+participant "AnalyzerController" as AC
+participant "VideoSynchronizationEngine" as VSE
+participant "SyncManager" as SM
+participant "VideoChannel" as VC
+
+note over AG, VC : User Play Button Click Flow
+
+AG -> AC : User clicks play button
+note right of AG : GUI event
+
+AC -> VSE : playVideo(BOTH_CHANNELS)
+note right of AC : Controller command
+
+VSE -> SM : handleEvent(PLAY, BOTH_CHANNELS)
+note right of VSE : Engine delegates to state machine
+
+SM -> SM : Route through current state
+note right of SM : State machine processing
+
+SM -> VC : playVideo()
+SM -> VC : playVideo()
+note right of SM : Command both channels
+
+VC -> VC : Start playback thread
+VC -> VC : Start playback thread
+note right of VC : Begin video playback
+
+note over AG, VC : Clear command flow: GUI → Controller → Engine → State Machine → Channels
 
 @enduml
 
