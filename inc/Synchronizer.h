@@ -21,7 +21,7 @@ class Synchronizer
     friend class SynchronizerStatePlaybackPaused;
 
     public:
-        Synchronizer(VideoChannel *channel_left, VideoChannel *channel_right);
+        Synchronizer(std::shared_ptr<VideoChannel> channel_left, std::shared_ptr<VideoChannel> channel_right);
         ~Synchronizer() = default;
         
         // Observer management
@@ -29,7 +29,7 @@ class Synchronizer
 
     private:
         std::weak_ptr<IVideoSynchronizationObserver> m_observer;
-        VideoChannel *m_pChannel_left, *m_pChannel_right;
+        std::shared_ptr<VideoChannel> m_pChannel_left, m_pChannel_right;
         Logger &m_logger;
 
         // synchronized video offset (left channel position - right channel position)

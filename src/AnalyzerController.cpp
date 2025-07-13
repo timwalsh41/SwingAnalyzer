@@ -13,6 +13,10 @@ void AnalyzerController::initialize()
     m_engine = std::make_shared<VideoPlayback::VideoSynchronizationEngine>();
     m_engine->addObserver(std::weak_ptr<VideoPlayback::IVideoSynchronizationObserver>(shared_from_this()));
     m_engine->start();
+
+    // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNELS
+    m_engine->loadVideo(VideoPlayback::WhichVideoChannel::LEFT_CHANNEL, "/home/tim/Downloads/Golf/2025-05-27 4i DTL.mp4");
+    m_engine->loadVideo(VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL, "/home/tim/Downloads/Golf/2025-05-27 4i FO.mp4");
     
     m_logger.info("AnalyzerController initialized");
 }
@@ -93,6 +97,21 @@ void AnalyzerController::onVideoLoaded(VideoPlayback::WhichVideoChannel channel,
 {
     m_logger.info("AnalyzerController::onVideoLoaded(%d, %s)", static_cast<int>(channel), success ? "success" : "failed");
     m_gui->updateVideoLoadedState(channel, success);
+
+    // If video loading was successful, set up the video renderer to connect the video to the GUI canvas
+    if (success)
+    {
+        VideoPlayback::VideoChannel* videoChannel = m_engine->getVideoChannel(channel);
+        if (videoChannel)
+        {
+            m_gui->setVideoRenderer(channel, videoChannel);
+            m_logger.info("Video renderer set up for channel %d", static_cast<int>(channel));
+        }
+        else
+        {
+            m_logger.error("Failed to get video channel for renderer setup");
+        }
+    }
 }
 
 void AnalyzerController::onVideoUnloaded(VideoPlayback::WhichVideoChannel channel)

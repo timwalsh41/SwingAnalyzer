@@ -36,16 +36,14 @@ class SyncManager
     // Start the sync manager state machine
     void start();
 
-    VideoChannel* getLeftChannel() { return &m_channel_left; }
-    VideoChannel* getRightChannel() { return &m_channel_right; }
+    VideoChannel* getLeftChannel() { return m_channel_left.get(); }
+    VideoChannel* getRightChannel() { return m_channel_right.get(); }
 
   private:
     // the sync manager owns the video channels; in the constructor we provide the callback
     // for the video frame update to update the slider position
-    VideoPlayback::VideoChannel m_channel_left{WhichVideoChannel::LEFT_CHANNEL,
-                                               [this](int active_frame, WhichVideoChannel channel) { this->videoFrameUpdate(active_frame, channel); }};
-    VideoPlayback::VideoChannel m_channel_right{WhichVideoChannel::RIGHT_CHANNEL,
-                                               [this](int active_frame, WhichVideoChannel channel) { this->videoFrameUpdate(active_frame, channel); }};
+    std::shared_ptr<VideoPlayback::VideoChannel> m_channel_left;
+    std::shared_ptr<VideoPlayback::VideoChannel> m_channel_right;
 
     // callback for video playback complete, implemented as thread-safe
     void videoPlaybackCompleteCallback(WhichVideoChannel source_channel);

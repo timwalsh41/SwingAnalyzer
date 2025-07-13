@@ -4,7 +4,7 @@
 
 namespace VideoPlayback
 {
-    Synchronizer::Synchronizer(VideoChannel *channel_left, VideoChannel *channel_right) : 
+    Synchronizer::Synchronizer(std::shared_ptr<VideoChannel> channel_left, std::shared_ptr<VideoChannel> channel_right) : 
         m_pChannel_left(channel_left), m_pChannel_right(channel_right), m_logger(Logger::get())
     {
     }
@@ -152,11 +152,11 @@ namespace VideoPlayback
         
         if (channel == WhichVideoChannel::LEFT_CHANNEL)
         {
-            pChannel = m_pChannel_left;
+            pChannel = m_pChannel_left.get();
         }
         else if (channel == WhichVideoChannel::RIGHT_CHANNEL)
         {
-            pChannel = m_pChannel_right;
+            pChannel = m_pChannel_right.get();
         }
 
         video_length = pChannel->getEndFrame() - pChannel->getStartFrame();

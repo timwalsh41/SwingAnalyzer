@@ -6,17 +6,20 @@
 namespace VideoPlayback
 {
     SyncManager::SyncManager() :
-        m_synchronizer(&m_channel_left, &m_channel_right), m_logger(Logger::get())
+        m_logger(Logger::get()),
+        m_channel_left(std::make_shared<VideoChannel>(
+            WhichVideoChannel::LEFT_CHANNEL,
+            [this](int active_frame, WhichVideoChannel channel) { this->videoFrameUpdate(active_frame, channel); }
+        )),
+        m_channel_right(std::make_shared<VideoChannel>(
+            WhichVideoChannel::RIGHT_CHANNEL,
+            [this](int active_frame, WhichVideoChannel channel) { this->videoFrameUpdate(active_frame, channel); }
+        )),
+        m_synchronizer(m_channel_left, m_channel_right)
     {
-        m_channel_left.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
-        m_channel_right.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
-
-        // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNEL
-        m_channel_left.loadVideo("/home/tim/Downloads/Golf/2025-05-27 4i DTL.mp4");
-        // auto video_size = m_channel_left.getVideoSize();
         
-        m_channel_right.loadVideo("/home/tim/Downloads/Golf/2025-05-27 4i FO.mp4");
-        // video_size = m_channel_right.getVideoSize();
+        m_channel_left->registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
+        m_channel_right->registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
     }
 
     void SyncManager::setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
