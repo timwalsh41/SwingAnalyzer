@@ -1,14 +1,17 @@
 #include <Synchronizer.h>
-#include <Analyzer.h>
 
 #include <algorithm>
 
 namespace VideoPlayback
 {
-    Synchronizer::Synchronizer(Analyzer* analyzer, VideoChannel *channel_left, VideoChannel *channel_right) : 
-        m_pAnalyzer{analyzer}, m_pChannel_left(channel_left), m_pChannel_right(channel_right), m_logger(Logger::get())
+    Synchronizer::Synchronizer(VideoChannel *channel_left, VideoChannel *channel_right) : 
+        m_pChannel_left(channel_left), m_pChannel_right(channel_right), m_logger(Logger::get())
     {
+    }
 
+    void Synchronizer::setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
+    {
+        m_observer = observer;
     }
 
     void Synchronizer::clearStartAndEndFrames()
@@ -172,17 +175,16 @@ namespace VideoPlayback
 
         if  (update_joint_slider)
         {
-            m_pAnalyzer->updateCombinedVideoPosition(new_position);
+            if (auto observer = m_observer.lock())
+            {
+                observer->onVideoPositionChanged(WhichVideoChannel::BOTH_CHANNELS, new_position);
+            }
         }
         else
         {
-            if (channel == LEFT_CHANNEL)
+            if (auto observer = m_observer.lock())
             {
-                m_pAnalyzer->updateLeftVideoPosition(new_position);
-            }
-            else if (channel == RIGHT_CHANNEL)
-            {
-                m_pAnalyzer->updateRightVideoPosition(new_position);
+                observer->onVideoPositionChanged(channel, new_position);
             }
         }
     }

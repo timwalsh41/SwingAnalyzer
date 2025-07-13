@@ -15,7 +15,17 @@ AnalyzerWindow::AnalyzerWindow(BaseObjectType *cobject, const Glib::RefPtr<Gtk::
     set_default_size(m_windowWidth, m_windowHeight);
     set_title("Swing Analyzer");
 
-    m_pAnalyzer = std::make_unique<Analyzer>(pBuilder);
+    // Create the GUI component
+    m_pGui = std::make_unique<AnalyzerGui>(pBuilder);
+    
+    // Create the controller (which will create the business logic layer)
+    m_pController = std::make_shared<AnalyzerController>(m_pGui.get());
+    
+    // Wire them together
+    m_pGui->setController(m_pController);
+    
+    // Initialize the controller to set up the business logic
+    m_pController->initialize();
 
     show_all();
 }

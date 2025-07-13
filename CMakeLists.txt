@@ -25,7 +25,9 @@ include_directories(
 
 add_executable(swing_analyzer   src/main.cpp
                                 src/AnalyzerWindow.cpp
-                                src/Analyzer.cpp
+                                src/AnalyzerController.cpp
+                                src/AnalyzerGui.cpp
+                                src/VideoSynchronizationEngine.cpp
                                 src/SyncManager.cpp
                                 src/Synchronizer.cpp
                                 src/SynchronizerStateSync.cpp

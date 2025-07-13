@@ -1,4 +1,3 @@
-#include <Analyzer.h>
 #include <SyncManager.h>
 #include <SynchronizerStateSync.h>
 
@@ -6,8 +5,8 @@
 
 namespace VideoPlayback
 {
-    SyncManager::SyncManager(Analyzer *analyzer) :
-        m_pAnalyzer(analyzer), m_synchronizer(analyzer, &m_channel_left, &m_channel_right), m_logger(Logger::get())
+    SyncManager::SyncManager() :
+        m_synchronizer(&m_channel_left, &m_channel_right), m_logger(Logger::get())
     {
         m_channel_left.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
         m_channel_right.registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
@@ -20,8 +19,15 @@ namespace VideoPlayback
         // video_size = m_channel_right.getVideoSize();
     }
 
+    void SyncManager::setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
+    {
+        m_observer = observer;
+        m_synchronizer.setObserver(observer);
+    }
+
     void SyncManager::start()
     {
+        // start the state machine in Sync state
         m_state = std::make_unique<SynchronizerStateSync>(&m_synchronizer);
     }
 

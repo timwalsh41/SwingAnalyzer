@@ -1,6 +1,5 @@
 #include <SynchronizerStateSyncToPlayback.h>
 #include <SynchronizerStatePlaybackPaused.h>
-#include <Analyzer.h>
 
 /*
 The SYNC_TO_PLAYBACK state exists only to lock in the video channel offset as we transition from sync
@@ -21,7 +20,10 @@ namespace VideoPlayback
         m_pSynchronizer->setVideosToStartPosition();
 
         // and move the scrollbar to the zero position
-        m_pSynchronizer->m_pAnalyzer->updateCombinedVideoPosition(0.0);
+        if (auto observer = m_pSynchronizer->m_observer.lock())
+        {
+            observer->onVideoPositionChanged(VideoPlayback::WhichVideoChannel::BOTH_CHANNELS, 0.0f);
+        }
 
         m_logger.debug("SyncManager: updating video channel offset to %d", m_pSynchronizer->m_video_frame_offset);
     }

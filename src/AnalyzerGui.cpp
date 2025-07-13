@@ -1,123 +1,85 @@
-#include <Analyzer.h>
+#include <AnalyzerGui.h>
+#include <VideoChannel.h>
 #include <VideoPlaybackConstants.h>
 
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
-Analyzer::Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuilder), m_logger{Logger::get()}
+AnalyzerGui::AnalyzerGui(const Glib::RefPtr<Gtk::Builder> &pBuilder) : m_builder(pBuilder), m_logger{Logger::get()}
 {
     m_logger.setLogLevel(LogSeverity::DEBUG);
+    m_logger.info("Initializing AnalyzerGui");
 
-    m_logger.info("Initializing Analyzer");
-
-    m_pSyncManager = std::make_unique<VideoPlayback::SyncManager>(this);
-
+    // Set up the GUI
     loadGuiObjects();
     setUpGui();
     connectSignals();
 
-    m_pSyncManager->start();
-
     // by default we'll start in sync mode
     m_guiObjects.chkSyncMode->set_active(true);
-    syncModeToggle(true);
+    updateSyncModeControls(true);
 
-    // TODO: TEMPORARY TEST CODE TO ADD AN ANNOTATION ON THE LEFT CANVAS
-    auto rect = Goocanvas::Rect::create(250, 400, 100, 100);
-    rect->property_stroke_color() = "red";
-    rect->property_line_width() = 6;
-    m_canvas_left->get_root_item()->add_child(rect);
-    m_canvas_left->show();
-
-    // TEMPORARY TEST CODE
-    // WORKS WITH TEMPORARY TEST CODE IN SYNCMANAGER TO LOAD VIDEOS
-    // SET VIDEO SIZE AND THEN START PLAYBACK
-    m_canvas_left->set_size_request(400, 600);
-    m_canvas_right->set_size_request(400, 600);
-
-    // we need to signal to the sync manager that we've loaded a new video in order to update
-    // the playback rate
-    m_pSyncManager->handleEvent(VideoPlayback::LOAD_VIDEO, VideoPlayback::BOTH_CHANNELS);
-
-    // and we'll start playback
-    m_pSyncManager->handleEvent(VideoPlayback::PLAY, VideoPlayback::BOTH_CHANNELS);
+    m_logger.info("AnalyzerGui initialized");
 }
 
-Analyzer::~Analyzer()
+AnalyzerGui::~AnalyzerGui()
 {
+    m_logger.info("AnalyzerGui destroyed");
 }
 
-void Analyzer::loadLeftVideo()
+void AnalyzerGui::setController(std::shared_ptr<VideoPlayback::IVideoSynchronizationController> controller)
 {
-    // TODO: load video via dialog box
-
-    // Update video filename text label
-
-    // we need to signal to the sync manager that we've loaded a new video in order to update
-    // the playback rate
-    m_pSyncManager->handleEvent(VideoPlayback::LOAD_VIDEO, VideoPlayback::LEFT_CHANNEL);
+    m_controller = controller;
+    m_logger.info("Controller set in AnalyzerGui");
 }
 
-void Analyzer::loadRightVideo()
+void AnalyzerGui::updateVideoPosition(VideoPlayback::WhichVideoChannel channel, float position)
 {
-    // TODO: load video via dialog box
-
-    // Update video filename text label
-
-    // we need to signal to the sync manager that we've loaded a new video in order to update
-    // the playback rate
-    m_pSyncManager->handleEvent(VideoPlayback::LOAD_VIDEO, VideoPlayback::RIGHT_CHANNEL);
-}
-
-void Analyzer::updateLeftVideoPosition(float video_position)
-{
-    if (video_position < 0 || video_position > 1)
+    if (position < 0 || position > 1)
     {
-        m_logger.error("Invalid video position for left channel: %f", video_position);
+        m_logger.error("Invalid video position for channel %d: %f", static_cast<int>(channel), position);
         return;
     }
 
-    // we'll block the scrollbar update while we update the scrollbar position
-    m_left_channel_scrollbar_connection.block();
-    m_guiObjects.scrollVideoLeft->set_value(video_position);
-    m_left_channel_scrollbar_connection.unblock();
-}
-
-void Analyzer::updateRightVideoPosition(float video_position)
-{
-    if (video_position < 0 || video_position > 1)
+    switch (channel)
     {
-        m_logger.error("Invalid video position for right channel: %f", video_position);
-        return;
+        case VideoPlayback::WhichVideoChannel::LEFT_CHANNEL:
+            // we'll block the scrollbar update while we update the scrollbar position
+            m_left_channel_scrollbar_connection.block();
+            m_guiObjects.scrollVideoLeft->set_value(position);
+            m_left_channel_scrollbar_connection.unblock();
+            break;
+            
+        case VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL:
+            // we'll block the scrollbar update while we update the scrollbar position
+            m_right_channel_scrollbar_connection.block();
+            m_guiObjects.scrollVideoRight->set_value(position);
+            m_right_channel_scrollbar_connection.unblock();
+            break;
+            
+        case VideoPlayback::WhichVideoChannel::BOTH_CHANNELS:
+            // we'll block the scrollbar update while we update the scrollbar position
+            m_dual_channel_scrollbar_connection.block();
+            m_guiObjects.scrollVideo->set_value(position);
+            m_dual_channel_scrollbar_connection.unblock();
+            break;
+            
+        default:
+            m_logger.warn("Invalid channel for video position update: %d", static_cast<int>(channel));
+            break;
     }
-
-    // we'll block the scrollbar update while we update the scrollbar position
-    m_right_channel_scrollbar_connection.block();
-    m_guiObjects.scrollVideoRight->set_value(video_position);
-    m_right_channel_scrollbar_connection.unblock();
 }
 
-void Analyzer::updateCombinedVideoPosition(float video_position)
+void AnalyzerGui::updatePlaybackState(VideoPlayback::WhichVideoChannel channel, VideoPlayback::VideoPlaybackStatus status)
 {
-    if (video_position < 0 || video_position > 1)
-    {
-        m_logger.error("Invalid video position for combined channels: %f", video_position);
-        return;
-    }
-
-    // we'll block the scrollbar update while we update the scrollbar position
-    m_dual_channel_scrollbar_connection.block();
-    m_guiObjects.scrollVideo->set_value(video_position);
-    m_dual_channel_scrollbar_connection.unblock();
+    // Update play button text based on playback state
+    // This is a simplified implementation - you might want more sophisticated state tracking
+    m_logger.debug("Playback state changed for channel %d: %d", static_cast<int>(channel), static_cast<int>(status));
 }
 
-// When in sync mode, we disable the joint controls and enable the individual video
-// controls, and vice versa when in playback mode
-void Analyzer::syncModeToggle(bool syncMode)
+void AnalyzerGui::updateSyncModeControls(bool syncMode)
 {
-    m_logger.info("Enabling %s controls", syncMode ? "sync" : "playback");
-
-    m_pSyncManager->handleEvent(syncMode ? VideoPlayback::SYNC_ON : VideoPlayback::SYNC_OFF, VideoPlayback::NO_CHANNEL);
+    m_logger.info("Updating GUI for %s mode", syncMode ? "sync" : "playback");
 
     m_guiObjects.btnGoToStart->set_sensitive(!syncMode);
     m_guiObjects.btnBack5Frames->set_sensitive(!syncMode);
@@ -144,80 +106,207 @@ void Analyzer::syncModeToggle(bool syncMode)
     m_guiObjects.scrollVideoRight->set_sensitive(syncMode);
 }
 
-void Analyzer::connectSignals()
+void AnalyzerGui::updateVideoLoadedState(VideoPlayback::WhichVideoChannel channel, bool success)
+{
+    m_logger.info("Video load %s for channel %d", success ? "succeeded" : "failed", static_cast<int>(channel));
+    
+    // Update video filename labels, button states, etc.
+    // This is where you'd update the GUI to reflect the loaded video state
+}
+
+void AnalyzerGui::updateVideoUnloadedState(VideoPlayback::WhichVideoChannel channel)
+{
+    m_logger.info("Video unloaded for channel %d", static_cast<int>(channel));
+    
+    // Update GUI to reflect unloaded state
+}
+
+void AnalyzerGui::setVideoRenderer(VideoPlayback::WhichVideoChannel channel, VideoPlayback::VideoChannel* videoChannel)
+{
+    if (!videoChannel)
+    {
+        m_logger.error("Null video channel provided for renderer setup");
+        return;
+    }
+
+    switch (channel)
+    {
+        case VideoPlayback::WhichVideoChannel::LEFT_CHANNEL:
+            if (m_canvas_left)
+            {
+                m_canvas_left->get_root_item()->add_child(videoChannel->GetImage());
+                m_canvas_left->show();
+                m_logger.info("Left video renderer set up");
+            }
+            break;
+            
+        case VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL:
+            if (m_canvas_right)
+            {
+                m_canvas_right->get_root_item()->add_child(videoChannel->GetImage());
+                m_canvas_right->show();
+                m_logger.info("Right video renderer set up");
+            }
+            break;
+            
+        default:
+            m_logger.error("Invalid channel for video renderer setup: %d", static_cast<int>(channel));
+            break;
+    }
+}
+
+void AnalyzerGui::onLoadLeftVideo()
+{
+    // TODO: load video via dialog box
+    m_logger.info("Load left video requested");
+    
+    if (m_controller)
+    {
+        // For now, we'll use a hardcoded path - in production this would be a file dialog
+        m_controller->loadVideo(VideoPlayback::WhichVideoChannel::LEFT_CHANNEL, 
+                               "/home/tim/Downloads/Golf/2025-05-27 4i DTL.mp4");
+    }
+}
+
+void AnalyzerGui::onLoadRightVideo()
+{
+    // TODO: load video via dialog box
+    m_logger.info("Load right video requested");
+    
+    if (m_controller)
+    {
+        // For now, we'll use a hardcoded path - in production this would be a file dialog
+        m_controller->loadVideo(VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL, 
+                               "/home/tim/Downloads/Golf/2025-05-27 4i FO.mp4");
+    }
+}
+
+void AnalyzerGui::onSyncModeToggle()
+{
+    bool syncMode = m_guiObjects.chkSyncMode->get_active();
+    m_logger.info("Sync mode toggled to: %s", syncMode ? "enabled" : "disabled");
+    
+    if (m_controller)
+    {
+        m_controller->setSyncMode(syncMode);
+    }
+}
+
+void AnalyzerGui::onVideoPositionChanged(VideoPlayback::WhichVideoChannel channel, float position)
+{
+    if (m_controller)
+    {
+        m_controller->setVideoPosition(channel, position);
+    }
+}
+
+void AnalyzerGui::connectSignals()
 {
     // Universal play/pause button
     m_guiObjects.btnPlay->signal_clicked().connect(
-        [this]() { this->m_pSyncManager->handleEvent(VideoPlayback::PLAY_OR_PAUSE, VideoPlayback::BOTH_CHANNELS); });
+        [this]() { 
+            if (m_controller) {
+                m_controller->playVideo(VideoPlayback::BOTH_CHANNELS);
+            }
+        });
 
     // Sync mode select box
     m_guiObjects.chkSyncMode->signal_toggled().connect(
-        [this]() { this->syncModeToggle(this->m_guiObjects.chkSyncMode->get_active()); });
+        [this]() { this->onSyncModeToggle(); });
+
+    // Video loading buttons
+    m_guiObjects.btnLoadLeftVideo->signal_clicked().connect(
+        [this]() { this->onLoadLeftVideo(); });
+    m_guiObjects.btnLoadRightVideo->signal_clicked().connect(
+        [this]() { this->onLoadRightVideo(); });
 
     // Sync mode individual video controls
     m_guiObjects.btnBack5FramesLeft->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::LEFT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::LEFT_CHANNEL, -VideoPlayback::FRAME_STEP_LARGE);
+        }
     });
     m_guiObjects.btnBack1FrameLeft->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::LEFT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::LEFT_CHANNEL, -VideoPlayback::FRAME_STEP_SMALL);
+        }
     });
     m_guiObjects.btnForward1FrameLeft->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::LEFT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::LEFT_CHANNEL, VideoPlayback::FRAME_STEP_SMALL);
+        }
     });
     m_guiObjects.btnForward5FramesLeft->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::LEFT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::LEFT_CHANNEL, VideoPlayback::FRAME_STEP_LARGE);
+        }
     });
 
     m_guiObjects.btnBack5FramesRight->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::RIGHT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::RIGHT_CHANNEL, -VideoPlayback::FRAME_STEP_LARGE);
+        }
     });
     m_guiObjects.btnBack1FrameRight->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::RIGHT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::RIGHT_CHANNEL, -VideoPlayback::FRAME_STEP_SMALL);
+        }
     });
     m_guiObjects.btnForward1FrameRight->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::RIGHT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::RIGHT_CHANNEL, VideoPlayback::FRAME_STEP_SMALL);
+        }
     });
     m_guiObjects.btnForward5FramesRight->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::RIGHT_CHANNEL);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::RIGHT_CHANNEL, VideoPlayback::FRAME_STEP_LARGE);
+        }
     });
 
     m_left_channel_scrollbar_connection = m_guiObjects.scrollVideoLeft->signal_value_changed().connect([this]() {
-        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideoLeft->get_value(),
-                                                  VideoPlayback::LEFT_CHANNEL);
+        this->onVideoPositionChanged(VideoPlayback::LEFT_CHANNEL, this->m_guiObjects.scrollVideoLeft->get_value());
     });
 
     m_right_channel_scrollbar_connection = m_guiObjects.scrollVideoRight->signal_value_changed().connect([this]() {
-        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideoRight->get_value(),
-                                                  VideoPlayback::RIGHT_CHANNEL);
+        this->onVideoPositionChanged(VideoPlayback::RIGHT_CHANNEL, this->m_guiObjects.scrollVideoRight->get_value());
     });
 
     m_dual_channel_scrollbar_connection = m_guiObjects.scrollVideo->signal_value_changed().connect([this]() {
-        this->m_pSyncManager->videoPositionUpdate(this->m_guiObjects.scrollVideo->get_value(),
-                                                  VideoPlayback::BOTH_CHANNELS);
+        this->onVideoPositionChanged(VideoPlayback::BOTH_CHANNELS, this->m_guiObjects.scrollVideo->get_value());
     });
 
     // Playback mode joint controls
     m_guiObjects.btnBack1Frame->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_SMALL, VideoPlayback::BOTH_CHANNELS);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::BOTH_CHANNELS, -VideoPlayback::FRAME_STEP_SMALL);
+        }
     });
     m_guiObjects.btnForward1Frame->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_SMALL, VideoPlayback::BOTH_CHANNELS);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::BOTH_CHANNELS, VideoPlayback::FRAME_STEP_SMALL);
+        }
     });
     m_guiObjects.btnBack5Frames->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_BACKWARD_LARGE, VideoPlayback::BOTH_CHANNELS);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::BOTH_CHANNELS, -VideoPlayback::FRAME_STEP_LARGE);
+        }
     });
     m_guiObjects.btnForward5Frames->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::STEP_FORWARD_LARGE, VideoPlayback::BOTH_CHANNELS);
+        if (m_controller) {
+            m_controller->stepVideo(VideoPlayback::BOTH_CHANNELS, VideoPlayback::FRAME_STEP_LARGE);
+        }
     });
     m_guiObjects.btnGoToStart->signal_clicked().connect([this]() {
-        this->m_pSyncManager->handleEvent(VideoPlayback::SET_VIDEO_TO_START, VideoPlayback::BOTH_CHANNELS);
+        if (m_controller) {
+            m_controller->setVideoToStart(VideoPlayback::BOTH_CHANNELS);
+        }
     });
 }
 
-void Analyzer::setUpGui()
+void AnalyzerGui::setUpGui()
 {
-    m_canvas_left = Gtk::manage(new Goocanvas::Canvas());
-    m_canvas_right = Gtk::manage(new Goocanvas::Canvas());
+    m_canvas_left = std::make_unique<Goocanvas::Canvas>();
+    m_canvas_right = std::make_unique<Goocanvas::Canvas>();
 
     Gtk::Box *left_video_box = nullptr;
     m_builder->get_widget("LeftVideoBox", left_video_box);
@@ -245,8 +334,16 @@ void Analyzer::setUpGui()
         throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find RightVideoBox");
     }
 
-    m_canvas_left->get_root_item()->add_child(m_pSyncManager->getLeftChannel()->GetImage());
-    m_canvas_right->get_root_item()->add_child(m_pSyncManager->getRightChannel()->GetImage());
+    // TODO: TEMPORARY TEST CODE TO ADD AN ANNOTATION ON THE LEFT CANVAS
+    auto rect = Goocanvas::Rect::create(250, 400, 100, 100);
+    rect->property_stroke_color() = "red";
+    rect->property_line_width() = 6;
+    m_canvas_left->get_root_item()->add_child(rect);
+    m_canvas_left->show();
+
+    // TEMPORARY TEST CODE - SET VIDEO SIZE
+    m_canvas_left->set_size_request(400, 600);
+    m_canvas_right->set_size_request(400, 600);
 
     auto left_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
     m_guiObjects.scrollVideoLeft->set_adjustment(left_adjustment);
@@ -267,11 +364,12 @@ void Analyzer::setUpGui()
 
     m_guiObjects.comboPlaybackRate->set_active_text("1.00x");
     m_guiObjects.comboPlaybackRate->signal_changed().connect([this]() {
+        // TODO: Implement playback rate change
         return;
     });
 }
 
-void Analyzer::loadGuiObjects()
+void AnalyzerGui::loadGuiObjects()
 {
     m_builder->get_widget("BtnBack5FramesLeft", m_guiObjects.btnBack5FramesLeft);
     if (!m_guiObjects.btnBack5FramesLeft)

@@ -1,10 +1,11 @@
 #ifndef SYNCHRONIZER_H
 #define SYNCHRONIZER_H
 
+#include <IVideoSynchronizationObserver.h>
 #include <Logger.h>
 #include <VideoChannel.h>
 
-class Analyzer;
+#include <memory>
 
 namespace VideoPlayback
 {
@@ -20,11 +21,14 @@ class Synchronizer
     friend class SynchronizerStatePlaybackPaused;
 
     public:
-        Synchronizer(Analyzer *analyzer, VideoChannel *channel_left, VideoChannel *channel_right);
+        Synchronizer(VideoChannel *channel_left, VideoChannel *channel_right);
         ~Synchronizer() = default;
+        
+        // Observer management
+        void setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer);
 
     private:
-        Analyzer *m_pAnalyzer;
+        std::weak_ptr<IVideoSynchronizationObserver> m_observer;
         VideoChannel *m_pChannel_left, *m_pChannel_right;
         Logger &m_logger;
 

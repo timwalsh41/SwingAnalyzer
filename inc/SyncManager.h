@@ -2,9 +2,11 @@
 #define SYNCHMANAGER_H
 
 #include <ISynchronizerState.h>
+#include <IVideoSynchronizationObserver.h>
 #include <Logger.h>
 #include <Synchronizer.h>
 
+#include <memory>
 #include <string>
 
 namespace VideoPlayback
@@ -13,14 +15,14 @@ namespace VideoPlayback
 class SyncManager
 {
   public:
-    SyncManager(Analyzer *analyzer);
+    SyncManager();
     ~SyncManager() = default;
+    
+    // Observer management
+    void setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer);
     
     // general event handler for synchronizer state machine
     void handleEvent(VideoSyncEvent event, WhichVideoChannel channel);
-
-    // start the Synchronizer state machine
-    void start();
 
     // Receive video position update from GUI slider
     // Could be for individual video channel (e.g. in sync mode) or
@@ -30,6 +32,9 @@ class SyncManager
     // Callback from video channel for position update, to pass on
     // updated position to slider
     void videoFrameUpdateCallback(float video_position, WhichVideoChannel channel);
+
+    // Start the sync manager state machine
+    void start();
 
     VideoChannel* getLeftChannel() { return &m_channel_left; }
     VideoChannel* getRightChannel() { return &m_channel_right; }
@@ -50,7 +55,7 @@ class SyncManager
 
     std::unique_ptr<ISynchronizerState> m_state;
 
-    Analyzer *m_pAnalyzer;
+    std::weak_ptr<IVideoSynchronizationObserver> m_observer;
     Synchronizer m_synchronizer;
 
     Logger &m_logger;

@@ -1,7 +1,8 @@
 #ifndef ANALYZERWINDOW_H
 #define ANALYZERWINDOW_H
 
-#include <Analyzer.h>
+#include <AnalyzerController.h>
+#include <AnalyzerGui.h>
 
 #include <glibmm/main.h>
 #include <gtkmm.h>
@@ -21,7 +22,8 @@ class AnalyzerWindow : public Gtk::Window
     // the GTK builder has references to all of the GUI components loaded from the Glade design
     Glib::RefPtr<Gtk::Builder> m_builder;
 
-    std::unique_ptr<Analyzer> m_pAnalyzer;
+    std::shared_ptr<AnalyzerController> m_pController;
+    std::unique_ptr<AnalyzerGui> m_pGui;
 
     // window width and height are used for resizing the video
     int m_windowWidth{0}, m_windowHeight{0};

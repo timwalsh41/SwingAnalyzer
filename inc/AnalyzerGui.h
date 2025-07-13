@@ -1,14 +1,19 @@
-#ifndef ANALYZER_H
-#define ANALYZER_H
+#ifndef ANALYZERGUI_H
+#define ANALYZERGUI_H
 
+#include <IVideoSynchronizationController.h>
 #include <Logger.h>
-#include <SyncManager.h>
-#include <VideoChannel.h>
+#include <VideoPlaybackTypes.h>
 
 #include <goocanvasmm.h>
 #include <gtkmm.h>
 
 #include <memory>
+
+// Forward declarations
+namespace VideoPlayback {
+    class VideoChannel;
+}
 
 struct AnalyzerGuiObjects
 {
@@ -45,30 +50,34 @@ struct AnalyzerGuiObjects
     Gtk::Button *btnHelp;
 };
 
-class Analyzer
+class AnalyzerGui
 {
   public:
-    Analyzer(const Glib::RefPtr<Gtk::Builder> &pBuilder);
-    ~Analyzer();
+    AnalyzerGui(const Glib::RefPtr<Gtk::Builder> &pBuilder);
+    ~AnalyzerGui();
 
-    // Signal callbacks
-    void loadLeftVideo();
-    void loadRightVideo();
+    // Set the controller for handling user actions
+    void setController(std::shared_ptr<VideoPlayback::IVideoSynchronizationController> controller);
 
-    // Callback for toggling control enabling
-    void syncModeToggle(bool syncMode);
+    // GUI update methods (called by controller)
+    void updateVideoPosition(VideoPlayback::WhichVideoChannel channel, float position);
+    void updatePlaybackState(VideoPlayback::WhichVideoChannel channel, VideoPlayback::VideoPlaybackStatus status);
+    void updateSyncModeControls(bool syncMode);
+    void updateVideoLoadedState(VideoPlayback::WhichVideoChannel channel, bool success);
+    void updateVideoUnloadedState(VideoPlayback::WhichVideoChannel channel);
 
-    // Callbacks for updating video position sliders
-    void updateLeftVideoPosition(float video_position);
-    void updateRightVideoPosition(float video_position);
-    void updateCombinedVideoPosition(float video_position);
+    // Canvas management for video display
+    void setVideoRenderer(VideoPlayback::WhichVideoChannel channel, VideoPlayback::VideoChannel* videoChannel);
 
   private:
     // maintain a reference to the GTK builder to access the GUI components
     Glib::RefPtr<Gtk::Builder> m_builder;
 
-    // the analyzer owns the GooCanvas objects that we'll add to the window
-    Goocanvas::Canvas *m_canvas_left, *m_canvas_right;
+    // Controller for handling user actions
+    std::shared_ptr<VideoPlayback::IVideoSynchronizationController> m_controller;
+
+    // the GUI owns the GooCanvas objects that we'll add to the window
+    std::unique_ptr<Goocanvas::Canvas> m_canvas_left, m_canvas_right;
 
     // hold the connections for the scrollbar callbacks so we can disable them when
     // the scrollbar position is updated by the video channels
@@ -76,9 +85,6 @@ class Analyzer
 
     // likewise for the dual channel connection in playback mode
     sigc::connection m_dual_channel_scrollbar_connection;
-
-    // the analyzer owns the synchronizer
-    std::unique_ptr<VideoPlayback::SyncManager> m_pSyncManager;
 
     // we store the handles to all of our GUI objects in a struct
     AnalyzerGuiObjects m_guiObjects;
@@ -89,6 +95,12 @@ class Analyzer
     void loadGuiObjects();
     void setUpGui();
     void connectSignals();
+    
+    // Internal signal callbacks
+    void onLoadLeftVideo();
+    void onLoadRightVideo();
+    void onSyncModeToggle();
+    void onVideoPositionChanged(VideoPlayback::WhichVideoChannel channel, float position);
 };
 
-#endif // ANALYZER_H
+#endif // ANALYZERGUI_H
