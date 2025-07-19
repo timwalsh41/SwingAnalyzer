@@ -5,17 +5,16 @@ Video channel frame update is the process of retrieving and displaying a new vid
 - **User initiated frame step**: Frame stepping with bounds checking via `VideoFrameManager`  
 - **User initiated slider drag**: Direct frame seeking through `Synchronizer`
 
-The update pathway for each mechanism involves the modular VideoChannel architecture with components like `OpenCVVideoDecoder`, `ThreadSafeFrameBuffer`, `GTKImageUpdater`, and `VideoFrameManager`.
+The update pathway for each mechanism involves the modular VideoChannel architecture relying on components `OpenCVVideoDecoder`, `ThreadSafeFrameBuffer`, `GTKImageUpdater`, and `VideoFrameManager`.
 
 ## Internal playback
 
-In internal playback, the displayed frame is updated periodically by a background thread managed by the `VideoPlaybackController`. The `playbackWorkerFunction` runs in an independent thread, retrieves frames from the `OpenCVVideoDecoder`, stores them in a thread-safe frame buffer, and then signals the main thread via a `Glib::Dispatcher` to update the GUI. The main thread processes the frame through the `onFrameUpdate` dispatcher callback, which retrieves the frame from the buffer, resizes it, and updates the GTK canvas image. At each frame update, a position callback is triggered to update the slider as well to maintain synchronization.
+In internal playback, the displayed frame is updated periodically by a background thread managed by the `VideoPlaybackController`. `VideoChannel::playbackWorkerFunction` runs in an independent thread, looping at the desired framerate. In each loop iteration, it will retrieve the next frame from the `OpenCVVideoDecoder`, store it in a thread-safe frame buffer, and signal the main thread via a `Glib::Dispatcher` to update the GUI. The main thread processes the frame through the `onFrameUpdate` dispatcher callback. In the callback, it retrieves the frame from the thread-safe buffer, resizes it as needed, and updates the GTK canvas image. At each frame update, a position callback to the `SyncManager` is triggered to update the slider as well to maintain synchronization between the video position and the GUI components (e.g. scrollbars).
 
 ```plantuml
 
 @startuml
 
-participant PlaybackController
 participant MainThread
 participant SyncManager
 
@@ -27,8 +26,8 @@ participant onFrameUpdate
 participant GTKImageUpdater
 end box
 
-activate PlaybackController
-PlaybackController -> playbackWorkerFunction : Start playback thread
+note right of MainThread : playBackWorkerFunction triggered\nfrom VideoChannel::playVideo
+MainThread -> playbackWorkerFunction : Start playback thread
 activate playbackWorkerFunction
 note right: Get next frame from\nOpenCVVideoDecoder\nIncrement frame counter
 playbackWorkerFunction -> ThreadSafeFrameBuffer : updateFrame(cv::Mat)
@@ -60,13 +59,13 @@ deactivate MainThread
 @enduml
 
 ```
-## Externally triggered updates
+## Externally Triggered Updates
 
-There are two paths to update the displayed frame: stepping by an offset, and setting the active frame index directly. Both use the same underlying mechanism involving the `seekToFrame` method, which validates the frame index, seeks to the frame in the video decoder, retrieves the frame data, updates the thread-safe frame buffer, and then updates the GUI display through the `GTKImageUpdater`. These operations are performed synchronously in the main thread.
+There are two paths to update the displayed frame: stepping by an offset, and setting the active frame index directly (e.g. seeking). Both use the same underlying mechanism involving the `seekToFrame` method, which validates the frame index, seeks to the frame in the video decoder, retrieves the frame data, updates the thread-safe frame buffer, and then updates the GUI display through the `GTKImageUpdater`. These operations are performed synchronously in the main thread.
 
-### Slider drag
+### Slider Drag (Seek)
 
-The slider drag is handled by the `Synchronizer`, which calculates the index of the frame that the video should be at based on the slider position. It calls the video channel's `seekToFrame` method, which loads the requested frame and updates the display. Since the update originated from the slider itself, no slider position update is triggered to avoid feedback loops.
+The slider drag is handled by the `Synchronizer`, which calculates the index of the frame that the video should be at based on the slider position. It calls the video channel's `seekToFrame` method, which loads the requested frame and updates the display. See <a href="Scroll bar synchronization.md">scroll bar synchronization</a> for details on how the scroll bar is kept synchronized to the video position during playback and seeking.
 
 ```plantuml
 
@@ -113,13 +112,10 @@ deactivate seekToFrame
 
 Here we step the frame by the provided offset using the `VideoFrameManager` to calculate the new frame index with bounds checking, then call `seekToFrame` to load and display the new frame. This triggers a slider update at the end through the position callback.
 
-Right now frame steps can come from the Analyzer (in sync mode, requests come directly from the buttons on the GUI) or the Synchronizer (in playback mode, step requests go to the Synchronizer and are then sent to both channels).
-
 ```plantuml
 
 @startuml 
 
-participant Analyzer
 participant Synchronizer
 
 box "VideoChannel" #LightBlue
@@ -131,11 +127,7 @@ participant ThreadSafeFrameBuffer
 participant GTKImageUpdater
 end box
 
-alt Analyzer induced
-    Analyzer -> stepFrame : stepFrame(offset)
-else Synchronizer induced
-    Synchronizer -> stepFrame : stepFrame(offset)
-end
+Synchronizer -> stepFrame : stepFrame(offset)
 activate stepFrame
 note right: Validate state\nStop playback if active
 stepFrame -> VideoFrameManager : stepFrame(current_frame, offset)

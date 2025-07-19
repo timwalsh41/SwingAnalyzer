@@ -2,6 +2,103 @@
 
 This document describes the complete system architecture of the SwingAnalyzer application, including the class hierarchy, component relationships, and design patterns used.
 
+Additional design documentation is available:
+- <a href="Video synchronization and playback.md">Video syncronization and playback</a>
+- <a href="Video channel frame update.md">Video channel frame updates</a>
+- <a href="Scroll bar synchronization.md">Scroll bar synchronization</a>
+
+## Architecture Overview
+
+The scroll bar synchronization system uses a layered architecture. Primary submodules include:
+
+1. **Video Synchronization Engine**: Core synchronization engine managing video operations between system submodules 
+2. **Video System**: Video management and playback for a single video channel
+3. **Controller**: Mediates between engine and GUI, implements both controller and observer interfaces
+4. **GUI**: GUI component handling user interactions and display updates
+
+```plantuml
+@startuml
+
+class Engine {
+    + VideoSynchronizationEngine
+    + SyncManager
+    + Synchronizer
+}
+
+class Controller {
+    + AnalyzerController
+    + IVideoSynchronizationController
+}
+
+class GUI {
+    + AnalyzerGui
+    + IVideoSynchronizationObserver
+}
+
+class VideoSystem {
+    + VideoChannel
+    + VideoPlaybackController
+}
+
+Engine ||--|| Controller : observer pattern
+Controller ||--|| GUI : controller pattern
+Engine ||--|| VideoSystem : std::shared_ptr
+VideoSystem ||--|| Engine : callbacks
+@enduml
+```
+
+## Layer Hierarchy
+
+This section presents the major hierarchical layers of the software and introduces key classes.
+
+### GUI Layer (Presentation)
+- **AnalyzerWindow**: Top-level GTK window managing the overall application
+    - Manages application lifecycle and window events
+    - Coordinates controller and GUI components
+- **AnalyzerGui**: Pure GUI management focused on user interface components and GTK/Goocanvas integration. Abstracts the GTK implementation of the GUI for the controller layer of the software.
+    - Handles GTK widget management and user interactions
+    - Manages video canvas setup and control signal connections
+
+### Controller Layer (Mediation)
+- **AnalyzerController**: Mediates between GUI and business logic using Controller and Observer patterns
+    - Implements both controller and observer interfaces for clean mediation
+    - Bridges GUI events to business logic using dependency injection
+    - Implements `IVideoSynchronizationController` interface for high-level video system commands
+    - Implements `IVideoSynchronizationObserver` interface for handling video playback notifications
+- **VideoSynchronizationEngine** (Business logic orchestrator)
+    - Coordinates all video synchronization operations
+    - Manages observer notifications and video channel access
+    - Registers the `AnalyzerController` as an observer, and then forwards that observer on to the `SyncManager` (and thus also `Synchronizer`)
+
+### Business Logic Layer (Core Domain)
+- **VideoSynchronizationEngine**: Main orchestrator coordinating video synchronization operations
+- **SyncManager**: State machine manager controlling sync and playback modes
+    - Owns video channels and manages synchronization state machine
+    - Routes events through current state handlers
+    - State machine classes implement `ISynchronizerState` interface
+        - Base for all synchronization states 
+        - Provides clean and consisteng state transition mechanism
+    - Concrete State Classes:
+        - `SynchronizerStateSync`: Independent video channel control mode
+        - `SynchronizerStateSyncToPlayback`: Transition state for offset calculation
+        - `SynchronizerStatePlaybackPaused`: Synchronized playback when paused
+        - `SynchronizerStatePlaybackPlaying`: Synchronized playback when playing
+- **Synchronizer**: Core synchronization logic managing coordination between the two video channels
+    - Calculates frame offsets and manages synchronized playback parameters
+    - Handles framerate differences and position updates
+
+### Video Components Layer (Infrastructure)
+- **VideoChannel**: Modular video player managing a single playback channel
+    - Pluggable architecture with interface-based components
+    - Handles individual video playback with state machine management
+- **Video Support Components**: Specialized classes for decoding, GUI updates, frame management, and playback control
+    - `VideoChannelStateMachine`: State management for video channel lifecycle
+    - `IVideoDecoder/OpenCVVideoDecoder`: Video file loading and frame extraction
+    - `IGUIImageUpdater/GTKImageUpdater`: GUI display updates
+    - `VideoFrameManager`: Frame range validation and navigation
+    - `VideoPlaybackController`: Threaded playback timing control
+    - `ThreadSafeFrameBuffer`: Thread-safe frame data management
+
 ## Class Diagram
 
 ```plantuml
@@ -266,112 +363,67 @@ IGUIImageUpdater <|-- GTKImageUpdater
 @enduml
 ```
 
-## System Architecture Overview
+## Implementation Details
 
-The SwingAnalyzer follows a layered architecture with clear separation of concerns:
+### GUI Callbacks and Event Handling
 
-### GUI Layer (Presentation)
-- **AnalyzerWindow**: Top-level GTK window managing the overall application
-- **AnalyzerGui**: Pure GUI management focused on user interface components and GTK/Goocanvas integration
+*To be filled out*
 
-### Controller Layer (Mediation)
-- **AnalyzerController**: Mediates between GUI and business logic using Controller and Observer patterns
-- **IVideoSynchronizationController**: Interface for high-level video system commands
-- **IVideoSynchronizationObserver**: Interface for handling video playback notifications
+### Video Synchronization and Playback
 
-### Business Logic Layer (Core Domain)
-- **VideoSynchronizationEngine**: Main orchestrator coordinating video synchronization operations
-- **SyncManager**: State machine manager controlling sync and playback modes
-- **Synchronizer**: Core synchronization logic managing frame offsets and video coordination
+The video synchronization system exists in one of two high level modes, which then break down into several states implemented in the synchronizer state machine. The modes are `SYNC` and `PLAYBACK`. In `SYNC` mode, the user can adjust the two video channels independently (e.g. play, step, or drag the scrollbar to advance the displayed frame) to align events for synchronized playback. In `PLAYBACK` mode, there is one shared set of controls that manages playback and frame stepping for the combined channels once synchronized.
 
-### Video Components Layer (Infrastructure)
-- **VideoChannel**: Modular video player with pluggable architecture
-- **State Machine Classes**: Clean state management for synchronization modes
-- **Video Support Components**: Specialized classes for decoding, GUI updates, frame management, and playback control
+The synchronizer components (`Synchronizer`, `SyncManager`, and the synchronizer state machine state objects) handle commands coming from the controller, and pass video callbacks to the controller.
 
-## Class Hierarchy Summary
+This is covered in depth in <a href="Video synchronization and playback.md">Video syncronization and playback</a> and <a href="Video channel frame update.md">Video channel frame updates</a>.
 
-### **Application Entry & Window Management**
-- **AnalyzerWindow** (Top-level GTK window)
-  - Manages application lifecycle and window events
-  - Coordinates controller and GUI components
+### Video Channel State Machine
 
-### **User Interface Management**
-- **AnalyzerGui** (Pure GUI component)
-  - Handles GTK widget management and user interactions
-  - Manages video canvas setup and control signal connections
+The video channel itself implements a state machine to manage its internal states. The possible states are `UNLOADED` (no video loaded), `STOPPED` (video loaded but not playing), and `PLAYING` (video loaded and actively playing). For handling state transitions, the state machine class implementation checks on allowed transitions only (e.g. is the transition from state A to state B allowed). If there are events that gate the transition, for example successful loading of a video, checks are required in the `VideoChannel` object itself that the transition events succeed before executing the transition in the state machine.
 
-### **Architecture Coordination**
-- **AnalyzerController** (Controller + Observer)
-  - Implements both controller and observer interfaces for clean mediation
-  - Bridges GUI events to business logic using dependency injection
+### Observer Management for Playback Events
 
-- **VideoSynchronizationEngine** (Business logic orchestrator)
-  - Coordinates all video synchronization operations
-  - Manages observer notifications and video channel access
-  - Registers the `AnalyzerController` as an observer, and then forwards that observer on to the `SyncManager` (and thus also `Synchronizer`)
+We use the observer pattern to communicate playback events (frame updates, playback complete, etc.) from the video layer to the controller layer. Observers implement the `IVideoSynchronizationObserver` interface. The `AnalyzerController` class is the only observer. The `AnalyzerController` owns the `VideoSynchronizationEngine`, and registers itself as an observer with the `VideoSynchronizationEngine` object. The `VideoSynchronizationEngine` then passes on that registration to the `SyncManager`, which passes it on to the `Synchronizer`. The `Synchronizer` and `SyncManager` (and associated state objects) then propagate relevant events to the `AnalyzerController` observer. Events are propagated from the `VideoChannels` to the `Synchronizer` and `SyncManager` via callbacks.
 
-### **Synchronization Core**
-- **SyncManager** (State machine manager)
-  - Owns video channels and manages synchronization state machine
-  - Routes events through current state handlers
+## Architectural Patterns
 
-- **Synchronizer** (Synchronization logic)
-  - Calculates frame offsets and manages synchronized playback parameters
-  - Handles framerate differences and position updates
+### Observer Pattern Implementation
+The system uses the observer pattern for GUI updates:
 
-### **State Management**
-- **ISynchronizerState** (State interface)
-  - Base for all synchronization states
-  - Provides clean state transition mechanism
+```cpp
+// Observer interface for GUI updates
+class IVideoSynchronizationObserver {
+    virtual void onVideoPositionChanged(WhichVideoChannel channel, float position) = 0;
+    virtual void onPlaybackStateChanged(WhichVideoChannel channel, VideoPlaybackStatus status) = 0;
+    virtual void onSyncModeChanged(bool syncMode) = 0;
+    // ...
+};
+```
 
-- **Concrete State Classes**
-  - **SynchronizerStateSync**: Independent video channel control mode
-  - **SynchronizerStateSyncToPlayback**: Transition state for offset calculation
-  - **SynchronizerStatePlaybackPaused**: Synchronized playback when paused
-  - **SynchronizerStatePlaybackPlaying**: Synchronized playback when playing
+### Controller Pattern Implementation
+User actions are handled through a controller interface:
 
-### **Video Infrastructure**
-- **VideoChannel** (Modular video player)
-  - Pluggable architecture with interface-based components
-  - Handles individual video playback with state machine management
+```cpp
+// Controller interface for user actions
+class IVideoSynchronizationController {
+    virtual void playVideo(WhichVideoChannel channel) = 0;
+    virtual void setVideoPosition(WhichVideoChannel channel, float position) = 0;
+    // ...
+};
+```
 
-- **Video Support Components**
-  - **VideoChannelStateMachine**: State management for video channel lifecycle
-  - **IVideoDecoder/OpenCVVideoDecoder**: Video file loading and frame extraction
-  - **IGUIImageUpdater/GTKImageUpdater**: GUI display updates
-  - **VideoFrameManager**: Frame range validation and navigation
-  - **VideoPlaybackController**: Threaded playback timing control
-  - **ThreadSafeFrameBuffer**: Thread-safe frame data management
-
-## Video channel state machine
-
-- State machine checks for allowed transitions only
-- At `VideoChannel` level, checks are required that transition events succeed before transitioning state
-    - For example, it is the responsibility of the `VideoChannel` to confirm that a video is loaded before transitioning from `UNLOADED` to `STOPPED`
-
-## Design Patterns Used
-
-### **Observer Pattern**
-- Clean separation between video engine and GUI updates
-- Weak pointer usage prevents circular dependencies
-
-### **Controller Pattern**
-- AnalyzerController mediates between GUI and business logic
-- Interface-based design enables easy testing and extension
-
-### **State Machine Pattern**
+### State Machine Pattern
 - Clean management of synchronization modes (sync vs. playback)
 - Event-driven transitions with state-specific behavior
 
-### **Dependency Injection**
+### Dependency Injection
 - GUI receives controller interface, not concrete implementation
 - Business logic components are injectable and testable
 
-### **Strategy Pattern**
+### Strategy Pattern
 - VideoChannel uses pluggable components (decoder, GUI updater)
 - Interface-based design allows easy component replacement
 
-### **Shared Ownership**
+### Shared Ownership
 - Modern C++ smart pointers for clean memory management
 - VideoChannel instances use shared_ptr for safe multi-ownership

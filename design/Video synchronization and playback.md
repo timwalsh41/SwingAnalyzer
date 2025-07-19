@@ -9,12 +9,14 @@ The video synchronization system enables users to time-align two video channels 
 **VideoSynchronizationEngine** serves as the top-level business logic coordinator that:
 - Manages observer pattern for GUI notifications
 - Coordinates high-level video synchronization operations
-- Provides clean interface for controller layer integration
-- Delegates state management to SyncManagerCreate system architecture class diagramthat:
-- Owns two `VideoChannel` instances (left and right) using shared_ptr
-- Implements a state machine to manage sync and playback modes
-- Routes events to the appropriate state handlers
-- Manages observer notifications for video position changes
+- Provides a clean interface for controller layer integration
+- Delegates state management to `SyncManager`
+
+**SyncManager** maintains the synchronization system state:
+    - Owns two `VideoChannel` instances (left and right) using shared pointers to share the video channels between `SyncManager` and `Synchronizer`
+    - Implements a state machine to manage sync and playback modes
+    - Routes events to the appropriate state handlers
+    - Manages observer notifications for video position changes
 
 **Synchronizer** manages the synchronization logic and data:
 - Calculates frame offsets between video channels
@@ -23,7 +25,7 @@ The video synchronization system enables users to time-align two video channels 
 - Uses observer pattern for GUI updates instead of direct calls
 
 **VideoChannel** handles individual video playback with a modular architecture using composition:
-- **State Management**: `VideoChannelStateMachine` manages state transitions (UNLOADED/STOPPED/PLAYING) with event-driven validation
+- **State Management**: `VideoChannelStateMachine` manages state transitions (UNLOADED/STOPPED/PLAYING) with event-driven transitions
 - **Video Decoding**: `IVideoDecoder`/`OpenCVVideoDecoder` handles video file loading, seeking, and frame extraction
 - **Frame Management**: `VideoFrameManager` provides frame range validation, bounds checking, and navigation logic
 - **Thread Safety**: `ThreadSafeFrameBuffer` enables safe frame data sharing between playback and display threads using mutex protection
@@ -38,7 +40,7 @@ The synchronization process occurs in two distinct phases:
 #### 1. Sync Mode (Manual Alignment)
 When the system is in sync mode, users can independently control each video channel to establish the desired temporal alignment:
 
-- **Individual Control**: Each video channel responds directly to its own set of controls (frame stepping, slider positioning)
+- **Individual Control**: Each video channel responds directly to its own independent set of controls (frame stepping, slider positioning)
 - **Independent Positioning**: Users can set each video to different frame positions to align specific events (e.g., golf ball contact)
 - **No Offset Calculation**: The system tracks current frame positions but does not yet calculate or apply any synchronization offset
 - **GUI State**: Individual channel controls are enabled, while combined playback controls are disabled
@@ -54,10 +56,10 @@ When transitioning from sync mode to playback mode, the system calculates and lo
   - If offset > 0: Left channel start frame is advanced by the offset amount
   - If offset < 0: Right channel start frame is advanced by the absolute offset amount
 - **Length Determination**: The system calculates the effective playable length of each channel and uses the shorter length as the combined playback length
-- **Master Channel Selection**: The channel with the shorter effective length becomes the master for GUI slider updates
+- **Master Channel Selection**: The channel with the shorter effective length becomes the master for GUI slider updates, which is to say the frame updates for the master channel triggers the joint slider update, and the second channel frame update events are ignored while in playback mode
 
 #### 3. Synchronized Playback Mode
-Once synchronization parameters are established, the system maintains perfect alignment:
+Once synchronization parameters are established, the system maintains temporal alignment between the two channels:
 
 - **Framerate Compensation**: If videos have different framerates, the system calculates a framerate ratio and applies proportional frame stepping
 - **Coordinated Control**: All playback operations (play, pause, step, seek) are applied to both channels with appropriate scaling
@@ -68,9 +70,9 @@ Once synchronization parameters are established, the system maintains perfect al
 
 The system uses a callback-based approach for position synchronization:
 
-1. **VideoChannel Position Callbacks**: Each `VideoChannel` is configured with a callback function (`m_position_callback`) that triggers when frame position changes during playback or seeking operations
-2. **Background Playback Thread**: The `VideoPlaybackController` manages background playback in a separate thread, with `playbackWorkerFunction()` continuously retrieving frames via `OpenCVVideoDecoder`
-3. **Thread-Safe Frame Buffering**: Frames are stored in `ThreadSafeFrameBuffer` with mutex protection, then `Glib::Dispatcher` signals the main thread for GUI updates
+1. **VideoChannel Position Callbacks**: Each `VideoChannel` is configured with a callback function (`m_position_callback`) that triggers when frame position changes during playback or seeking operations; this callback is set to the `videoFrameUpdate` method of the `SyncManager`
+2. **Background Playback Thread**: The `VideoPlaybackController` manages background playback in a separate thread, with `playbackWorkerFunction()` continuously retrieving pending frames via `OpenCVVideoDecoder`
+3. **Thread-Safe Frame Buffering**: Frames are stored in `ThreadSafeFrameBuffer` with mutex protection, then `Glib::Dispatcher` signals the main thread to update the GUI with the latest frame when it becomes available
 4. **Main Thread Processing**: The `onFrameUpdate()` callback retrieves frames from the buffer, processes them through `GTKImageUpdater`, and triggers position callbacks
 5. **State Machine Routing**: The `SyncManager` receives position callbacks and routes them through the current state's event handler as `VIDEO_FRAME_UPDATE` events
 6. **Synchronizer Processing**: The `Synchronizer` calculates normalized position (0.0 to 1.0) and notifies observers (e.g to update appropriate sliders based on sync/playback mode)
@@ -83,7 +85,7 @@ This callback-based approach provides efficient position tracking with clean sep
 When videos have different framerates, the system maintains temporal synchronization:
 
 - **Ratio Calculation**: `framerate_ratio = left_fps / right_fps`
-- **Proportional Stepping**: Frame step operations are scaled by the framerate ratio
+- **Proportional Stepping**: Playback frame step operations are scaled by the framerate ratio
 - **Temporal Alignment**: Videos advance at rates proportional to their framerates to maintain synchronized timing
 
 This architecture ensures that regardless of the source videos' framerates or the user's initial alignment choices, the synchronized playback maintains perfect temporal coordination between the two video channels.
@@ -92,7 +94,7 @@ This architecture ensures that regardless of the source videos' framerates or th
 
 ## Overview
 
-From the user perspective, the system is either in synchronization mode, where the user can adjust the offset between the two channels, or the playback mode, where the synchronized videos are played or otherwise manipulated via frame stepping or slider dragging using the individual channel controls to time sync the two channels. These two modes actually break down into four states implemented by the synchronizer state machine as described in the below diagram and the notes that follow.
+From the user's perspective, the system is either in synchronization mode, where the user can adjust the offset between the two channels via frame stepping or slider dragging using the individual channel controls to time sync the two channels, or in playback mode, where the synchronized videos are played or otherwise manipulated by joint controls for stepping frames or seeking through the video with a scroll bar. These two modes actually break down into four states implemented by the synchronizer state machine as described in the below diagram and the notes that follow.
 
 ## Diagram
 
@@ -123,11 +125,13 @@ PlaybackPaused --> Sync: Sync mode selected
 
 ## Notes
 
+- Event handling is accomplished through `SyncManager::handleEvent(event, channel)`. The event is forwarded on to the synchronization state machine. This callback signature does not provide for passing any data. Therefore, we rely on the `SyncManager` handling of specific events where data are required. For specifics, please refer to the table below (where events have associated data, it is listed) and the `SyncManager` implementation of event handling for those events.
 - `SyncToPlayback` state
-    - On entry to this state, we establish the synchronization between the two video channels
+    - On entry to this state, we establish the synchronization between the two video channels by calculating the net offset in video position that exists when the user triggers the transition from sync to playback mode
     - We determine the offset between the two as the difference in the delta from the start frame to the active frame
-    - We then update the start frame for one channel or the other according to the offset
-    - This state exists only to execute the state entry actions, we transition to the `PlaybackPaused` state on a tick event, where the tick event is always executed after any state transition.
+    - We then update the start frame for one channel or the other depending on the sign of the offset
+    - This state exists only to execute the state entry actions, we transition to the `PlaybackPaused` state on a tick event, where the tick event is always executed after any state transition
+        - In the event handler in `SyncManager`, first the nominal event is handled and then the `SyncManager` immediately inserts a tick event in order to transition the `SyncToPlayback` state to `PlaybackPaused`
 - `Sync` state
     - On entry to this state, we clear the synchronization settings, that is we set the offset to zero and reset the start and end frames
 
@@ -175,13 +179,13 @@ The classes involved in synchronization are:
   - Coordinates high-level video synchronization operations
   - Provides clean interface for controller integration
 - `SyncManager` is the state machine orchestrator for video playback and synchronization
-  - Owns video channels using shared_ptr ownership model to share with `Synchronizer`
+  - Owns video channels using shared pointer ownership model to share with `Synchronizer`
   - Routes events through the synchronization state machine
   - Manages observer notifications for position updates
 - `Synchronizer` manages the core synchronization logic and data
   - Calculates frame offsets and handles framerate differences
   - Uses observer pattern to route event information to the GUI
-  - Friend classes with SyncManager and synchronization state machine states for controlled access
+  - Friend classes with `SyncManager` and synchronization state machine states for controlled access
 
 **State Machine:**
 - `ISynchronizerState` implements the interface for state machine states
@@ -414,7 +418,7 @@ note right of VC : Signal main thread
 
 == Main Thread Update ==
 VC -> VC : onFrameUpdate()
-note right of VC : Main thread dispatcher callback
+note right of VC : Callback for frame update dispatcher\nfrom playback worker thread
 
 VC -> TSF : getDisplayFrame(target_size)
 activate TSF
@@ -426,8 +430,8 @@ activate GUI
 note right of GUI : BGR to RGB conversion\nUpdate Goocanvas pixbuf
 deactivate GUI
 
-VC -> SM : m_position_callback(frame, channel)
-note right of VC : Position update callback
+VC -> SM : videoFrameUpdate(frame, channel)
+note right of VC : Invoked via VideoChannel::m_position_callback
 
 == State Machine Processing ==
 SM -> SM : videoFrameUpdate(frame, channel)
@@ -470,8 +474,7 @@ end box
 
 == Position Update Request ==
 SM -> SY : videoPositionUpdate(channel)
-note right of SM : From slider position,\nvia observer(?)
-
+note right of SM : From slider position update,\nvia AnalyzerController to\nVideoSynchronizationEnginer\nto SyncManager 
 SY -> SY : Calculate target frame\nfrom normalized position
 note right of SY : frame = start + (position * length)
 
@@ -522,5 +525,7 @@ note right of VC : Update slider position\n(avoid feedback loops)
 @enduml
 
 ```
+
+## Scroll Bar Synchronizaion
 
 See <a href="Scroll bar synchronization.md">scroll bar synchronization</a> for more details on handling scroll bar updates.
