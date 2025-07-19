@@ -12,32 +12,11 @@ VideoSynchronizationEngine::VideoSynchronizationEngine() : m_logger(Logger::get(
     m_logger.info("VideoSynchronizationEngine initialized");
 }
 
-void VideoSynchronizationEngine::addObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
+void VideoSynchronizationEngine::setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
 {
-    if (!observer.expired())
-    {
-        m_observers.push_back(observer);
-        m_logger.debug("Observer added to VideoSynchronizationEngine");
-    }
-}
-
-void VideoSynchronizationEngine::removeObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
-{
-    auto observerPtr = observer.lock();
-    if (!observerPtr)
-    {
-        return;
-    }
-    
-    m_observers.erase(
-        std::remove_if(m_observers.begin(), m_observers.end(),
-            [&observerPtr](const std::weak_ptr<IVideoSynchronizationObserver>& weak_obs) {
-                auto obs = weak_obs.lock();
-                return !obs || obs == observerPtr;
-            }),
-        m_observers.end());
-    
-    m_logger.debug("Observer removed from VideoSynchronizationEngine");
+    m_observer = observer;
+    m_syncManager->setObserver(observer);
+    m_logger.debug("Observer set on VideoSynchronizationEngine and forwarded to SyncManager");
 }
 
 void VideoSynchronizationEngine::playVideo(WhichVideoChannel channel)
@@ -164,77 +143,42 @@ void VideoSynchronizationEngine::start()
 
 void VideoSynchronizationEngine::notifyVideoPositionChanged(WhichVideoChannel channel, float position)
 {
-    cleanupExpiredObservers();
-    
-    for (auto& weakObserver : m_observers)
+    if (auto observer = m_observer.lock())
     {
-        if (auto observer = weakObserver.lock())
-        {
-            observer->onVideoPositionChanged(channel, position);
-        }
+        observer->onVideoPositionChanged(channel, position);
     }
 }
 
 void VideoSynchronizationEngine::notifyPlaybackStateChanged(WhichVideoChannel channel, VideoPlaybackStatus status)
 {
-    cleanupExpiredObservers();
-    
-    for (auto& weakObserver : m_observers)
+    if (auto observer = m_observer.lock())
     {
-        if (auto observer = weakObserver.lock())
-        {
-            observer->onPlaybackStateChanged(channel, status);
-        }
+        observer->onPlaybackStateChanged(channel, status);
     }
 }
 
 void VideoSynchronizationEngine::notifySyncModeChanged(bool syncMode)
 {
-    cleanupExpiredObservers();
-    
-    for (auto& weakObserver : m_observers)
+    if (auto observer = m_observer.lock())
     {
-        if (auto observer = weakObserver.lock())
-        {
-            observer->onSyncModeChanged(syncMode);
-        }
+        observer->onSyncModeChanged(syncMode);
     }
 }
 
 void VideoSynchronizationEngine::notifyVideoLoaded(WhichVideoChannel channel, bool success)
 {
-    cleanupExpiredObservers();
-    
-    for (auto& weakObserver : m_observers)
+    if (auto observer = m_observer.lock())
     {
-        if (auto observer = weakObserver.lock())
-        {
-            observer->onVideoLoaded(channel, success);
-        }
+        observer->onVideoLoaded(channel, success);
     }
 }
 
 void VideoSynchronizationEngine::notifyVideoUnloaded(WhichVideoChannel channel)
 {
-    cleanupExpiredObservers();
-    
-    for (auto& weakObserver : m_observers)
+    if (auto observer = m_observer.lock())
     {
-        if (auto observer = weakObserver.lock())
-        {
-            observer->onVideoUnloaded(channel);
-        }
+        observer->onVideoUnloaded(channel);
     }
-}
-
-void VideoSynchronizationEngine::cleanupExpiredObservers()
-{
-    m_observers.erase(
-        std::remove_if(m_observers.begin(), m_observers.end(),
-            [](const std::weak_ptr<IVideoSynchronizationObserver>& weak_obs) {
-                return weak_obs.expired();
-            }),
-        m_observers.end());
 }
 
 } // namespace VideoPlayback

@@ -19,8 +19,7 @@ public:
     ~VideoSynchronizationEngine() = default;
     
     // Observer management
-    void addObserver(std::weak_ptr<IVideoSynchronizationObserver> observer);
-    void removeObserver(std::weak_ptr<IVideoSynchronizationObserver> observer);
+    void setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer);
     
     // Video playback control
     void playVideo(WhichVideoChannel channel);
@@ -49,7 +48,7 @@ public:
 
 private:
     std::unique_ptr<SyncManager> m_syncManager;
-    std::vector<std::weak_ptr<IVideoSynchronizationObserver>> m_observers;
+    std::weak_ptr<IVideoSynchronizationObserver> m_observer;
     Logger& m_logger;
     
     // Notification helpers
@@ -58,9 +57,6 @@ private:
     void notifySyncModeChanged(bool syncMode);
     void notifyVideoLoaded(WhichVideoChannel channel, bool success);
     void notifyVideoUnloaded(WhichVideoChannel channel);
-    
-    // Clean up expired weak_ptr observers
-    void cleanupExpiredObservers();
 };
 
 } // namespace VideoPlayback

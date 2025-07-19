@@ -309,6 +309,7 @@ The SwingAnalyzer follows a layered architecture with clear separation of concer
 - **VideoSynchronizationEngine** (Business logic orchestrator)
   - Coordinates all video synchronization operations
   - Manages observer notifications and video channel access
+  - Registers the `AnalyzerController` as an observer, and then forwards that observer on to the `SyncManager` (and thus also `Synchronizer`)
 
 ### **Synchronization Core**
 - **SyncManager** (State machine manager)

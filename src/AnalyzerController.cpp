@@ -11,7 +11,7 @@ AnalyzerController::AnalyzerController(AnalyzerGui* gui)
 void AnalyzerController::initialize()
 {
     m_engine = std::make_shared<VideoPlayback::VideoSynchronizationEngine>();
-    m_engine->addObserver(std::weak_ptr<VideoPlayback::IVideoSynchronizationObserver>(shared_from_this()));
+    m_engine->setObserver(std::weak_ptr<VideoPlayback::IVideoSynchronizationObserver>(shared_from_this()));
     m_engine->start();
 
     // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNELS

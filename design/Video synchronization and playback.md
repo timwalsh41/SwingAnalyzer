@@ -22,14 +22,14 @@ The video synchronization system enables users to time-align two video channels 
 - Manages synchronized playback parameters
 - Uses observer pattern for GUI updates instead of direct calls
 
-**VideoChannel** handles individual video playback with a modular architecture:
-- **Core Components**:
-  - `VideoChannelStateMachine`: Manages state transitions (UNLOADED/STOPPED/PLAYING)
-  - `IVideoDecoder`/`OpenCVVideoDecoder`: Handles video file loading and frame extraction
-  - `IGUIImageUpdater`/`GTKImageUpdater`: Manages GUI image display updates
-  - `VideoFrameManager`: Handles frame range validation and navigation
-  - `VideoPlaybackController`: Controls playback timing and threading
-  - `ThreadSafeFrameBuffer`: Provides thread-safe frame data management
+**VideoChannel** handles individual video playback with a modular architecture using composition:
+- **State Management**: `VideoChannelStateMachine` manages state transitions (UNLOADED/STOPPED/PLAYING) with event-driven validation
+- **Video Decoding**: `IVideoDecoder`/`OpenCVVideoDecoder` handles video file loading, seeking, and frame extraction
+- **Frame Management**: `VideoFrameManager` provides frame range validation, bounds checking, and navigation logic
+- **Thread Safety**: `ThreadSafeFrameBuffer` enables safe frame data sharing between playback and display threads using mutex protection
+- **Playback Control**: `VideoPlaybackController` manages background playback threading with precise timing control
+- **GUI Integration**: `IGUIImageUpdater`/`GTKImageUpdater` handles BGR-to-RGB conversion and Goocanvas pixbuf updates
+- **Threading Model**: Uses `Glib::Dispatcher` for cross-thread communication from background playback to main GUI thread
 
 ### Synchronization Process
 
@@ -66,16 +66,17 @@ Once synchronization parameters are established, the system maintains perfect al
 
 ### Frame Update Mechanism
 
-The system uses an observer pattern approach to maintain GUI synchronization:
+The system uses a callback-based approach for position synchronization:
 
-1. **Video Channel Callbacks**: Each `VideoChannel` is configured with a callback function that triggers when its active frame changes during playback
-2. **State Machine Routing**: The `SyncManager` receives these callbacks and routes them through the current state's event handler
-3. **Synchronizer Processing**: The `Synchronizer` calculates the normalized position (0.0 to 1.0) based on the channel's start/end frames
-4. **Observer Notifications**: The `Synchronizer` notifies registered observers through the `IVideoSynchronizationObserver` interface
-5. **Controller Mediation**: The `AnalyzerController` receives observer notifications and updates the GUI through `AnalyzerGui`
-6. **GUI Updates**: The `AnalyzerGui` updates the appropriate slider(s) based on the received position information
+1. **VideoChannel Position Callbacks**: Each `VideoChannel` is configured with a callback function (`m_position_callback`) that triggers when frame position changes during playback or seeking operations
+2. **Background Playback Thread**: The `VideoPlaybackController` manages background playback in a separate thread, with `playbackWorkerFunction()` continuously retrieving frames via `OpenCVVideoDecoder`
+3. **Thread-Safe Frame Buffering**: Frames are stored in `ThreadSafeFrameBuffer` with mutex protection, then `Glib::Dispatcher` signals the main thread for GUI updates
+4. **Main Thread Processing**: The `onFrameUpdate()` callback retrieves frames from the buffer, processes them through `GTKImageUpdater`, and triggers position callbacks
+5. **State Machine Routing**: The `SyncManager` receives position callbacks and routes them through the current state's event handler as `VIDEO_FRAME_UPDATE` events
+6. **Synchronizer Processing**: The `Synchronizer` calculates normalized position (0.0 to 1.0) and notifies observers (e.g to update appropriate sliders based on sync/playback mode)
+7. **GUI Updates**: Individual channel sliders (sync mode) or joint slider (playback mode) are updated through direct calls to `AnalyzerGui` methods
 
-This observer-based approach provides clean separation between business logic and GUI layers.
+This callback-based approach provides efficient position tracking with clean separation between threading, frame processing, and GUI updates.
 
 ### Framerate Handling
 
@@ -369,91 +370,157 @@ SyncManager ..> IVideoSynchronizationObserver : notifies
 
 ```
 
-## Video Position Update Sequence
+## Video Playback Position Update Sequence
 
-The following sequence diagram shows how video position updates flow through the new observer-based architecture:
+The following sequence diagram shows how video position updates flow through the modular `VideoChannel` architecture for video playback:
 
 ```plantuml
 
 @startuml
 
+participant "VideoPlaybackController" as VPC
 participant "VideoChannel" as VC
+participant "OpenCVVideoDecoder" as VD
+participant "ThreadSafeFrameBuffer" as TSF
+participant "GTKImageUpdater" as GUI
 participant "SyncManager" as SM
 participant "Synchronizer" as SY
-participant "VideoSynchronizationEngine" as VSE
-participant "AnalyzerController" as AC
-participant "AnalyzerGui" as AG
 
-note over VC, AG : Video Position Update Flow (Observer Pattern)
+box "VideoChannel Components" #LightBlue
+    participant VPC
+    participant VD
+    participant TSF
+    participant GUI
+end box
 
-VC -> SM : videoFrameUpdate(frame, channel)
-note right of VC : Callback from video playback
+note over VPC, SY : Video Position Update Flow - Internal Playback
+
+== Background Thread Playback ==
+VPC -> VC : playbackWorkerFunction()
+note right of VPC : Background thread execution
+
+VC -> VD : getNextFrame(frame)
+activate VD
+note right of VD : Extract frame from video file
+deactivate VD
+
+VC -> TSF : updateFrame(frame)
+activate TSF
+note right of TSF : Thread-safe frame storage\n(mutex protected)
+deactivate TSF
+
+VC -> VC : m_frame_update_dispatcher.emit()
+note right of VC : Signal main thread
+
+== Main Thread Update ==
+VC -> VC : onFrameUpdate()
+note right of VC : Main thread dispatcher callback
+
+VC -> TSF : getDisplayFrame(target_size)
+activate TSF
+note right of TSF : Thread-safe frame retrieval\n(resized for display)
+deactivate TSF
+
+VC -> GUI : updateImage(display_frame)
+activate GUI
+note right of GUI : BGR to RGB conversion\nUpdate Goocanvas pixbuf
+deactivate GUI
+
+VC -> SM : m_position_callback(frame, channel)
+note right of VC : Position update callback
+
+== State Machine Processing ==
+SM -> SM : videoFrameUpdate(frame, channel)
+note right of SM : Store active frame
 
 SM -> SM : handleEvent(VIDEO_FRAME_UPDATE, channel)
-note right of SM : Route through state machine
+note right of SM : Route through current state
 
-SM -> SY : (via current state) videoFrameUpdate(channel, update_joint_slider)
-note right of SM : State delegates to synchronizer
-
-SY -> SY : Calculate normalized position (0.0-1.0)
-note right of SY : Based on start/end frames
-
-SY -> VSE : notifyObservers(onVideoPositionChanged)
-note right of SY : Observer pattern notification
-
-VSE -> AC : onVideoPositionChanged(channel, position)
-note right of VSE : Through weak_ptr observer
-
-AC -> AG : updateVideoPosition(channel, position)
-note right of AC : Controller updates GUI
-
-AG -> AG : Update slider widget
-note right of AG : Pure GUI operation
-
-note over VC, AG : Clean separation: Business logic → Observer → Controller → GUI
+SM -> SY : videoFrameUpdate(channel, update_joint_slider)
+note right of SY : Notify observers of frame update
 
 @enduml
 
 ```
 
-## User Interaction Sequence
+## User-Initiated Position Update Sequence
 
-The following sequence diagram shows how user interactions flow from GUI to business logic:
+The following sequence diagram shows how external position updates (slider drags, frame stepping) are handled:
 
 ```plantuml
 
 @startuml
 
-participant "AnalyzerGui" as AG
-participant "AnalyzerController" as AC
-participant "VideoSynchronizationEngine" as VSE
 participant "SyncManager" as SM
+participant "Synchronizer" as SY
 participant "VideoChannel" as VC
+participant "VideoFrameManager" as VFM
+participant "VideoChannelStateMachine" as VSM
+participant "OpenCVVideoDecoder" as VD
+participant "ThreadSafeFrameBuffer" as TSF
+participant "GTKImageUpdater" as GUI
 
-note over AG, VC : User Play Button Click Flow
+box "VideoChannel Components" #LightBlue
+    participant VFM
+    participant VSM
+    participant VD
+    participant TSF
+    participant GUI
+end box
 
-AG -> AC : User clicks play button
-note right of AG : GUI event
+== Position Update Request ==
+SM -> SY : videoPositionUpdate(channel)
+note right of SM : From slider position,\nvia observer(?)
 
-AC -> VSE : playVideo(BOTH_CHANNELS)
-note right of AC : Controller command
+SY -> SY : Calculate target frame\nfrom normalized position
+note right of SY : frame = start + (position * length)
 
-VSE -> SM : handleEvent(PLAY, BOTH_CHANNELS)
-note right of VSE : Engine delegates to state machine
+SY -> VC : seekToFrame(target_frame)
 
-SM -> SM : Route through current state
-note right of SM : State machine processing
+== Frame Seeking Process ==
+VC -> VSM : canSeek()
+activate VSM
+note right of VSM : State validation
+deactivate VSM
 
-SM -> VC : playVideo()
-SM -> VC : playVideo()
-note right of SM : Command both channels
+VC -> VFM : isValidFrame(target_frame)
+activate VFM
+note right of VFM : Bounds checking
+deactivate VFM
 
-VC -> VC : Start playback thread
-VC -> VC : Start playback thread
-note right of VC : Begin video playback
+VC -> VC : Stop playback if active
+note right of VC : Pause current playback
 
-note over AG, VC : Clear command flow: GUI → Controller → Engine → State Machine → Channels
+VC -> VD : seekToFrame(target_frame)
+activate VD
+note right of VD : Seek to position in video file
+deactivate VD
+
+VC -> VD : getCurrentFrame(frame_data)
+activate VD
+note right of VD : Extract frame at position
+deactivate VD
+
+VC -> TSF : updateFrame(frame_data)
+activate TSF
+note right of TSF : Store frame in thread-safe buffer
+deactivate TSF
+
+VC -> TSF : getDisplayFrame(target_size)
+activate TSF
+note right of TSF : Retrieve resized frame
+deactivate TSF
+
+VC -> GUI : updateImage(display_frame)
+activate GUI
+note right of GUI : Update display with new frame
+deactivate GUI
+
+VC -> SM : m_position_callback(frame, channel)
+note right of VC : Update slider position\n(avoid feedback loops)
 
 @enduml
 
 ```
+
+See <a href="Scroll bar synchronization.md">scroll bar synchronization</a> for more details on handling scroll bar updates.
