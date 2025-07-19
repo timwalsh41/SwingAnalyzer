@@ -1,432 +1,271 @@
-## Sync mode
+# Scroll bar synchronization
+
+## Purpose
+
+This document describes the implementation of the scroll bar synchronization feature between video channels in the SwingAnalyzer application.
+
+## Architecture Overview
+
+The scroll bar synchronization system uses a layered architecture with observer pattern and clean separation of concerns:
+
+```plantuml
+@startuml
+!define RECTANGLE class
+
+RECTANGLE Engine {
+    + VideoSynchronizationEngine
+    + SyncManager
+    + Synchronizer
+}
+
+RECTANGLE Controller {
+    + AnalyzerController
+    + IVideoSynchronizationController
+}
+
+RECTANGLE GUI {
+    + AnalyzerGui
+    + IVideoSynchronizationObserver
+}
+
+RECTANGLE VideoSystem {
+    + VideoChannel
+    + VideoPlaybackController
+}
+
+Engine ||--|| Controller : observer pattern
+Controller ||--|| GUI : controller pattern
+Engine ||--|| VideoSystem : std::shared_ptr
+VideoSystem ||--|| Engine : callbacks
+@enduml
+```
+
+### Core Components
+
+1. **VideoSynchronizationEngine**: Core synchronization engine managing video operations between system submodules
+2. **AnalyzerController**: Mediates between engine and GUI, implements both controller and observer interfaces
+3. **AnalyzerGui**: Pure GUI component handling user interactions and display updates
+4. **SyncManager**: Orchestrates synchronization using internal state machine pattern
+5. **Synchronization State Machine**: Implements different synchronizer operational modes (sync, playback)
+6. **VideoChannel**: Manages individual video playback channel with shared pointer ownership
+
+
+## Architecture Pattern
+
+### Observer Pattern Implementation
+The system uses the observer pattern for GUI updates:
+
+```cpp
+// Observer interface for GUI updates
+class IVideoSynchronizationObserver {
+    virtual void onVideoPositionChanged(WhichVideoChannel channel, float position) = 0;
+    virtual void onPlaybackStateChanged(WhichVideoChannel channel, VideoPlaybackStatus status) = 0;
+    virtual void onSyncModeChanged(bool syncMode) = 0;
+    // ...
+};
+```
+
+### Controller Pattern Implementation
+User actions are handled through a controller interface:
+
+```cpp
+// Controller interface for user actions
+class IVideoSynchronizationController {
+    virtual void playVideo(WhichVideoChannel channel) = 0;
+    virtual void setVideoPosition(WhichVideoChannel channel, float position) = 0;
+    // ...
+};
+```
+
+## Component Interaction Flow
+
+### Primary Architecture Flow
+```plantuml
+@startuml
+participant "User" as U
+participant "AnalyzerGui" as AG
+participant "AnalyzerController" as AC
+participant "VideoSynchronizationEngine" as VSE
+participant "SyncManager" as SM
+
+U -> AG: scrollbar changed
+AG -> AC: setVideoPosition(channel, position) [IVideoSynchronizationController]
+AC -> VSE: setVideoPosition(channel, position)
+VSE -> SM: videoPositionUpdate(position, channel)
+note right: Engine delegates to SyncManager
+
+VSE -> AC: onVideoPositionChanged(channel, position) [IVideoSynchronizationObserver]
+AC -> AG: updateVideoPosition(channel, position)
+AG -> AG: update scrollbar display
+@enduml
+```
+
+### Internal Flow (SyncManager Components)
+The VideoSynchronizationEngine delegates to the existing SyncManager for actual synchronization logic:
+
+```plantuml
+@startuml
+participant "VideoSynchronizationEngine" as VSE
+participant "SyncManager" as SM
+participant "Synchronizer" as S
+participant "VideoChannel" as VC
+
+VSE -> SM: videoPositionUpdate(position, channel)
+SM -> SM: handleEvent(VIDEO_POSITION_UPDATE)
+SM -> S: videoPositionUpdate(channel)
+S -> VC: seekToFrame(calculated_frame)
+
+VC -> SM: position_callback(frame, channel)
+SM -> SM: handleEvent(VIDEO_FRAME_UPDATE) 
+SM -> S: videoFrameUpdate(channel, update_joint)
+S -> VSE: notifyVideoPositionChanged(channel, position)
+@enduml
+```
+
+### Scroll Bar Drag vs Button Press Differentiation
+The key to preventing infinite loops is the connection blocking mechanism:
+
+```cpp
+// In AnalyzerGui::updateVideoPosition()
+void AnalyzerGui::updateVideoPosition(WhichVideoChannel channel, float position) {
+    switch (channel) {
+        case LEFT_CHANNEL:
+            // Block the signal connection to prevent recursion
+            m_left_channel_scrollbar_connection.block();
+            m_guiObjects.scrollVideoLeft->set_value(position);
+            m_left_channel_scrollbar_connection.unblock();
+            break;
+        // ...
+    }
+}
+
+// In AnalyzerGui::connectSignals()
+m_left_channel_scrollbar_connection = m_guiObjects.scrollVideoLeft->signal_value_changed().connect([this]() {
+    // This callback is blocked during programmatic updates
+    this->onVideoPositionChanged(LEFT_CHANNEL, this->m_guiObjects.scrollVideoLeft->get_value());
+});
+```
+
+## Sequence Diagrams
+
+### Video playback frame update triggers scrollbar update
+
+```plantuml
+@startuml
+
+collections VideoChannel
+participant SyncManager
+participant Synchronizer
+participant VideoSynchronizationEngine
+participant AnalyzerController
+participant AnalyzerGui
+
+VideoChannel -> VideoChannel : Playback frame update\n(playbackWorkerFunction)
+VideoChannel -> VideoChannel : Frame update dispatcher\n(onFrameUpdate callback)
+VideoChannel -> VideoChannel : Update displayed image
+VideoChannel -> SyncManager : videoFrameUpdate(frame, channel)\n(via m_position_update_callback)
+SyncManager -> SyncManager : Store active frame in\nm_new_active_frame
+SyncManager -> SyncManager : VIDEO_FRAME_UPDATE event\n(L/R channel specific)\nHandled in state machine
+alt Sync Mode
+    SyncManager -> Synchronizer : videoFrameUpdate(channel, false)
+    note right of Synchronizer : Set update_joint_slider\nto false
+else Playback mode
+    SyncManager -> Synchronizer : videoFrameUpdate(channel, true)
+    note right of Synchronizer : Set update_joint_slider\nto true, will only trigger\nupdate for one channel
+end alt
+Synchronizer -> Synchronizer : Set frame based on new position
+Synchronizer -> AnalyzerController : onVideoPositionChanged(channel, position)
+note right of AnalyzerController: Triggered via observer
+AnalyzerController -> AnalyzerGui : updateVideoPosition(channel, position)
+AnalyzerGui -> AnalyzerGui : Update appropriate scrollbar\nposition (while blocking\nscrollbar update callbacks)
+
+@enduml
+```
 
 ### User drags channel scrollbar
 
+Here, the scrollbar triggers the update of the video frame in one (sync mode) or both (playback mode) channels. The video channel triggers the callbacks and observer to update the slider. Since the slider update is conducted in a blocking mode, we don't get an infinite loop here. That is, the user moving the slider will trigger the slider getting adjusted because of the frame update, but because the latter slider update does not trigger a frame update we do not get an infinite loop.
+
 ```plantuml
 @startuml
 
 actor User
-participant Analyzer
+participant AnalyzerGui
+participant AnalyzerController
+participant VideoSynchronizationEngine
 participant SyncManager
 participant Synchronizer
 collections VideoChannel
 
-User -> Analyzer : Channel slider drag
-Analyzer -> SyncManager : videoPositionUpdate(position, channel)
+User -> AnalyzerGui : Channel slider drag
+AnalyzerGui -> AnalyzerGui : onVideoPositionChanged(channel, position)
+AnalyzerGui -> AnalyzerController : setVideoPosition(position, channel)\n[IVideoSynchronizationController]
+AnalyzerController -> VideoSynchronizationEngine : setVideoPosition(position, channel)
+VideoSynchronizationEngine -> SyncManager : videoPositionUpdate(position, channel)
 SyncManager -> SyncManager : Store position in m_new_video_position
 SyncManager -> SyncManager : VIDEO_POSITION_UPDATE event
 SyncManager -> Synchronizer : videoPositionUpdate(channel)\n(channel-specific update)
+note right of SyncManager : Handled via SyncManager\nstate machine\nVIDEO_POSITION_UPDATE event
 Synchronizer -> VideoChannel : seekToFrame(calculated_frame)\n(pauses channel playback if active)
 VideoChannel -> VideoChannel : Stop playback if active\nValidate frame bounds\nUpdate decoder position
 VideoChannel -> VideoChannel : Update frame buffer and GUI
+VideoChannel -> SyncManager : videoFrameUpdate(frame, channel)\n(notify position change\nvia m_position_callback)
+note right of SyncManager : Handled via SyncManager\nstate machine\nVIDEO_FRAME_UPDATE event
+alt Sync mode
+    SyncManager -> Synchronizer : videoFrameUpdate(channel, false)
+    note right of SyncManager: Set update_joint_slider\nto false
+else Playback mode
+    SyncManager -> Synchronizer : videoFrameUpdate(channel, true)
+    note right of SyncManager: Set update_joint_slider\nto true
+end alt
+Synchronizer -> Synchronizer : Set frame based on new position
+Synchronizer -> AnalyzerController : onVideoPositionChanged(channel, new_position)
+note right of AnalyzerController: Triggered via observer
+AnalyzerController -> AnalyzerGui : updateVideoPosition(channel, position)
+AnalyzerGui -> AnalyzerGui : Update appropriate scrollbar\nposition (while blocking\nscrollbar update callbacks)
 
 @enduml
+
 ```
 
-### Video frame update triggers scrollbar update
-
-```plantuml
-@startuml
-
-collections VideoChannel
-participant SyncManager
-participant Synchronizer
-participant Analyzer
-
-VideoChannel -> VideoChannel : Playback frame update\n(playbackWorkerFunction)
-VideoChannel -> VideoChannel : Frame update dispatcher\n(onFrameUpdate callback)
-VideoChannel -> SyncManager : m_position_callback(frame, channel)\n(via constructor callback)
-SyncManager -> SyncManager : Store active frame in\nm_new_active_frame
-SyncManager -> Synchronizer : Store frame index
-SyncManager -> SyncManager : VIDEO_FRAME_UPDATE event\n(L/R channel specific)
-SyncManager -> Synchronizer : videoFrameUpdate(channel, false)\n(individual channel mode)
-Synchronizer -> Analyzer : updateLeftVideoPosition() or\nupdateRightVideoPosition()\n(channel-specific slider update)
-
-@enduml
-```
-
-## Playback mode
-
-### User drags joint scrollbar
+### User steps frame
 
 ```plantuml
 @startuml
 
 actor User
-participant Analyzer
+participant AnalyzerGui
+participant AnalyzerController
+participant VideoSynchronizationEngine
 participant SyncManager
 participant Synchronizer
 collections VideoChannel
 
-User -> Analyzer : Global slider drag
-Analyzer -> SyncManager : videoPositionUpdate(position, BOTH_CHANNELS)
-SyncManager -> SyncManager : Store position in m_new_video_position
-SyncManager -> SyncManager : VIDEO_POSITION_UPDATE event\n(triggers transition to\nPLAYBACKPAUSED state\nif in PLAYBACKPLAYING)
-SyncManager -> Synchronizer : videoPositionUpdate(BOTH_CHANNELS)
-Synchronizer -> VideoChannel : seekToFrame(left_frame)\nseekToFrame(right_frame)\n(calculated based on combined length)
+User -> AnalyzerGui : Step frame button
+AnalyzerGui -> AnalyzerController : stepFrame(channel, frames)
+AnalyzerController -> VideoSynchronizationEngine : stepVideo(channel, frames)
+VideoSynchronizationEngine -> SyncManager : handleEvent(STEP_xxx, channel)
+SyncManager -> VideoChannel : stepFrame(frames)
+note right of SyncManager : Handled via SyncManager\nstate machine\nstep frames events:\nSTEP_FORWARD_SMALL\nSTEP_FORWARD_LARGE\nSTEP_BACKWARD_SMALL\nSTEP_BACKWARD_LARGE
+VideoChannel -> VideoChannel : Calculate new frame index
+VideoChannel -> VideoChannel : seekToFrame(new_frame)\n(pauses channel playback if active)
+VideoChannel -> VideoChannel : Stop playback if active\nValidate frame bounds\nUpdate decoder position
+VideoChannel -> VideoChannel : Update frame buffer and GUI
+VideoChannel -> SyncManager : videoFrameUpdate(frame, channel)\n(notify position change\nvia m_position_callback)
+note right of SyncManager : Handled via SyncManager\nstate machine\nVIDEO_FRAME_UPDATE event
+alt Sync mode
+    SyncManager -> Synchronizer : videoFrameUpdate(channel, false)
+    note right of SyncManager: Set update_joint_slider\nto false
+else Playback mode
+    SyncManager -> Synchronizer : videoFrameUpdate(channel, true)
+    note right of SyncManager: Set update_joint_slider\nto true
+end alt
+Synchronizer -> Synchronizer : Set frame based on new position
+Synchronizer -> AnalyzerController : onVideoPositionChanged(channel, new_position)
+note right of AnalyzerController: Triggered via observer
+AnalyzerController -> AnalyzerGui : updateVideoPosition(channel, position)
+AnalyzerGui -> AnalyzerGui : Update appropriate scrollbar\nposition (while blocking\nscrollbar update callbacks)
 
 @enduml
-```
 
-### Update joint scrollbar during playback
-
-```plantuml
-@startuml
-
-collections VideoChannel
-participant SyncManager
-participant Synchronizer
-participant Analyzer
-
-VideoChannel -> VideoChannel : Playback frame update\n(playbackWorkerFunction)
-VideoChannel -> VideoChannel : Frame update dispatcher\n(onFrameUpdate callback)
-VideoChannel -> SyncManager : m_position_callback(frame, channel)\n(only from designated channel)
-note right: In playback mode, only one channel\n(m_video_position_update_channel)\ntriggers joint slider updates
-SyncManager -> SyncManager : Store active frame in\nm_new_active_frame
-SyncManager -> Synchronizer : Store frame index
-SyncManager -> SyncManager : VIDEO_FRAME_UPDATE event\n(designated channel only)
-SyncManager -> Synchronizer : videoFrameUpdate(channel, true)\n(joint slider mode)
-Synchronizer -> Analyzer : updateCombinedVideoPosition()\n(joint slider update)
-
-@enduml
-```
-
-## Implementation Details
-
-### VideoChannel Callback Architecture
-
-The VideoChannel implements position callbacks through a constructor parameter:
-```cpp
-VideoChannel(WhichVideoChannel channel, 
-            std::function<void(int, WhichVideoChannel)> update_callback)
-```
-
-The callback (`m_position_callback`) is triggered in two key locations:
-1. **seekToFrame()** - When externally seeking to a specific frame (slider drag, stepping)
-2. **onFrameUpdate()** - During internal playback via the frame update dispatcher
-
-### Position Update Flow
-
-**External Updates (Slider/Step):**
-- `Analyzer` → `SyncManager::videoPositionUpdate()` → `Synchronizer::videoPositionUpdate()` → `VideoChannel::seekToFrame()`
-- `seekToFrame()` triggers `m_position_callback()` to update the slider position
-
-**Internal Updates (Playback):**
-- `playbackWorkerFunction()` → `m_frame_update_dispatcher.emit()` → `onFrameUpdate()` → `m_position_callback()`
-- The callback flows to `SyncManager::videoFrameUpdate()` → state machine → `Synchronizer::videoFrameUpdate()`
-
-### State-Dependent Behavior
-
-**Sync Mode:**
-- Each channel independently updates its own slider via `updateLeftVideoPosition()` or `updateRightVideoPosition()`
-- Both channels can trigger position updates independently
-
-**Playback Mode:**
-- Only the designated channel (`m_video_position_update_channel`) updates the joint slider
-- The channel selection is determined during sync-to-playback transition based on which video is shorter
-- Joint slider updates use `updateCombinedVideoPosition()`
-
-### Thread Safety
-
-The VideoChannel uses thread-safe mechanisms:
-- `Glib::Dispatcher` for cross-thread communication from playback worker to main thread
-- `ThreadSafeFrameBuffer` for frame data sharing between threads
-- Position callbacks are invoked from the main thread context
-
-## Error Handling Scenarios
-
-### Input Validation Errors
-
-The system includes comprehensive input validation with appropriate error responses:
-
-#### Invalid Slider Position
-```plantuml
-@startuml
-
-actor User
-participant Analyzer  
-participant SyncManager
-participant Logger
-
-User -> Analyzer : Slider drag (invalid position)
-Analyzer -> SyncManager : videoPositionUpdate(position < 0 || > 1, channel)
-SyncManager -> SyncManager : Validate position range
-alt Invalid position
-    SyncManager -> Logger : warn("Invalid video position %.3f, valid range is (0.0,1.0)")
-    SyncManager -> User : Early return, no action taken
-else Valid position
-    SyncManager -> SyncManager : Continue normal processing
-end
-
-@enduml
-```
-
-#### Invalid Frame Index
-```plantuml
-@startuml
-
-participant Synchronizer
-participant VideoChannel
-participant VideoFrameManager
-participant Logger
-
-Synchronizer -> VideoChannel : seekToFrame(invalid_frame)
-VideoChannel -> VideoChannel : Validate state (canSeek())
-alt Invalid state
-    VideoChannel -> Logger : warn("Cannot seek in current state: %s")
-    VideoChannel -> Synchronizer : Early return
-else Valid state
-    VideoChannel -> VideoFrameManager : isValidFrame(frame)
-    alt Invalid frame
-        VideoChannel -> Logger : warn("Invalid frame index: %d (valid range: %d-%d)")
-        VideoChannel -> Synchronizer : Early return
-    else Valid frame
-        VideoChannel -> VideoChannel : Continue seek operation
-    end
-end
-
-@enduml
-```
-
-#### Invalid Video Size
-```plantuml
-@startuml
-
-participant Caller
-participant VideoChannel
-participant Logger
-
-Caller -> VideoChannel : setVideoSize(width, height)
-VideoChannel -> VideoChannel : Check if video loaded
-alt Not loaded
-    VideoChannel -> Caller : Early return
-else Loaded
-    VideoChannel -> VideoChannel : Validate dimensions (width < 10 || height < 10)
-    alt Invalid dimensions
-        VideoChannel -> Logger : error("Invalid video size: %dx%d")
-        VideoChannel -> Caller : Early return
-    else Valid dimensions
-        VideoChannel -> VideoChannel : Apply size with aspect ratio
-    end
-end
-
-@enduml
-```
-
-### State Machine Validation Errors
-
-#### Invalid State Transitions
-```plantuml
-@startuml
-
-participant VideoChannel
-participant VideoChannelStateMachine
-participant Logger
-
-VideoChannel -> VideoChannelStateMachine : transition(event)
-VideoChannelStateMachine -> VideoChannelStateMachine : isValidTransition(event)
-alt Invalid transition
-    VideoChannelStateMachine -> VideoChannel : return false
-    VideoChannel -> Logger : warn("Invalid state transition: %s in state %s")
-    VideoChannel -> VideoChannel : Operation rejected
-else Valid transition
-    VideoChannelStateMachine -> VideoChannelStateMachine : Apply state change
-    VideoChannelStateMachine -> VideoChannel : return true
-end
-
-@enduml
-```
-
-#### Playback State Conflicts
-```plantuml
-@startuml
-
-participant User
-participant VideoChannel
-participant VideoChannelStateMachine
-participant Logger
-
-User -> VideoChannel : playVideo()
-VideoChannel -> VideoChannelStateMachine : transition(PLAY)
-alt Cannot play (wrong state)
-    VideoChannelStateMachine -> VideoChannel : return false
-    VideoChannel -> Logger : warn("Cannot play video in current state: %s")
-    VideoChannel -> User : Operation ignored
-else Can play
-    VideoChannel -> VideoChannel : Start playback process
-end
-
-@enduml
-```
-
-### Frame Management Errors
-
-#### Frame Range Validation
-```plantuml
-@startuml
-
-participant VideoChannel
-participant VideoFrameManager
-participant Logger
-
-VideoChannel -> VideoFrameManager : setStartFrame(invalid_start)
-VideoFrameManager -> VideoFrameManager : Validate range (start < 0 || start >= end)
-alt Invalid range
-    VideoFrameManager -> Logger : warn("Invalid start frame: %d (valid range: 0-%d)")
-    VideoFrameManager -> VideoChannel : Early return, no change
-else Valid range
-    VideoFrameManager -> VideoFrameManager : Apply frame range
-end
-
-@enduml
-```
-
-#### Frame Step Bounds Checking
-```plantuml
-@startuml
-
-participant VideoChannel
-participant VideoFrameManager
-
-VideoChannel -> VideoFrameManager : stepFrame(current_frame, offset)
-VideoFrameManager -> VideoFrameManager : Calculate new_frame = current + offset
-VideoFrameManager -> VideoFrameManager : clampFrame(new_frame)
-note right: Automatically clamps to valid range\n[start_frame, end_frame]
-VideoFrameManager -> VideoChannel : return clamped_frame
-
-@enduml
-```
-
-### Thread Safety and Resource Errors
-
-#### Empty Frame Handling
-```plantuml
-@startuml
-
-participant playbackWorkerFunction
-participant VideoDecoder
-participant ThreadSafeFrameBuffer
-participant Logger
-
-playbackWorkerFunction -> VideoDecoder : getNextFrame(frame)
-VideoDecoder -> playbackWorkerFunction : return frame
-alt Frame is empty
-    playbackWorkerFunction -> Logger : warn("Frame %d is empty for %s channel")
-    playbackWorkerFunction -> playbackWorkerFunction : Skip frame update, continue loop
-else Frame is valid
-    playbackWorkerFunction -> ThreadSafeFrameBuffer : updateFrame(frame)
-    playbackWorkerFunction -> playbackWorkerFunction : emit frame update
-end
-
-@enduml
-```
-
-#### Buffer Validation
-```plantuml
-@startuml
-
-participant Caller
-participant ThreadSafeFrameBuffer
-participant Logger
-
-Caller -> ThreadSafeFrameBuffer : updateFrame(new_frame)
-ThreadSafeFrameBuffer -> ThreadSafeFrameBuffer : Check if new_frame.empty()
-alt Empty frame
-    ThreadSafeFrameBuffer -> Logger : warn("Attempted to update frame buffer with empty frame")
-    ThreadSafeFrameBuffer -> Caller : Early return, no update
-else Valid frame
-    ThreadSafeFrameBuffer -> ThreadSafeFrameBuffer : Lock mutex and clone frame
-end
-
-@enduml
-```
-
-### Decoder and File System Errors
-
-#### Video Load Failure
-```plantuml
-@startuml
-
-participant VideoChannel
-participant VideoDecoder
-participant VideoChannelStateMachine
-participant Logger
-
-VideoChannel -> VideoDecoder : loadVideo(path)
-VideoDecoder -> VideoDecoder : Attempt to open video file
-alt Load failure
-    VideoDecoder -> VideoChannel : return VIDEO_LOAD_ERROR_*
-    VideoChannel -> VideoChannelStateMachine : transition(ERROR_OCCURRED)
-    note right: Revert state to handle failure
-    VideoChannel -> VideoChannel : Return error status
-else Load success
-    VideoDecoder -> VideoChannel : return VIDEO_LOAD_SUCCESS
-    VideoChannel -> VideoChannel : Continue initialization
-end
-
-@enduml
-```
-
-#### Frame Seek Failure
-```plantuml
-@startuml
-
-participant VideoChannel
-participant OpenCVVideoDecoder
-participant Logger
-
-VideoChannel -> OpenCVVideoDecoder : seekToFrame(frame_number)
-OpenCVVideoDecoder -> OpenCVVideoDecoder : Validate loaded and frame range
-alt Invalid frame or not loaded
-    OpenCVVideoDecoder -> Logger : warn("Invalid frame number: %d (valid range: 0-%d)")
-    OpenCVVideoDecoder -> VideoChannel : return false
-else Valid request
-    OpenCVVideoDecoder -> OpenCVVideoDecoder : cv::VideoCapture.set(POS_FRAMES)
-    OpenCVVideoDecoder -> VideoChannel : return success/failure
-end
-
-@enduml
-```
-
-### Configuration Validation Errors
-
-#### Framerate Multiplier Validation
-```plantuml
-@startuml
-
-participant Caller
-participant VideoChannel
-participant Logger
-
-Caller -> VideoChannel : setFramerateMultiplier(multiplier)
-VideoChannel -> VideoChannel : Validate range (MIN_FRAMERATE_MULTIPLIER to MAX_FRAMERATE_MULTIPLIER)
-alt Out of range
-    VideoChannel -> Logger : warn("Invalid framerate multiplier %.3f, valid range is (%.3f,%.3f)")
-    VideoChannel -> Caller : Early return, no change
-else Valid range
-    VideoChannel -> VideoChannel : Pause if playing
-    VideoChannel -> VideoChannel : Apply multiplier
-end
-
-@enduml
-```
-
-#### Synchronizer Channel Validation
-```plantuml
-@startuml
-
-participant SynchronizerState
-participant Synchronizer
-participant Logger
-
-SynchronizerState -> SynchronizerState : handleEvent(STEP_FORWARD_SMALL, channel)
-SynchronizerState -> SynchronizerState : Validate channel (LEFT_CHANNEL || RIGHT_CHANNEL)
-alt Invalid channel
-    SynchronizerState -> Logger : warn("Invalid channel selected for frame step %d")
-    SynchronizerState -> SynchronizerState : No action taken
-else Valid channel
-    SynchronizerState -> Synchronizer : Forward to appropriate video channel
-end
-
-@enduml
 ```

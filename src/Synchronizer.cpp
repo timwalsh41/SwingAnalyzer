@@ -143,10 +143,11 @@ namespace VideoPlayback
         int video_length;
         VideoChannel* pChannel;
 
-        if (channel != m_video_position_update_channel && update_joint_slider)
+        // if this is a call to update the joint slider (e.g. we are in playback mode not sync mode), then
+        // discard if this is not for the active channel we use for video position tracking
+        auto no_slider_update = ((channel != m_video_position_update_channel) && update_joint_slider);
+        if (no_slider_update)
         {
-            // we only update the slider for one channel in playback mode (e.g. when updating the
-            // joint slider)
             return;
         }
         
