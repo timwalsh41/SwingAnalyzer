@@ -5,21 +5,29 @@
 
 namespace VideoPlayback
 {
-    SyncManager::SyncManager() :
+    SyncManager::SyncManager(std::shared_ptr<VideoChannel> leftChannel, 
+                             std::shared_ptr<VideoChannel> rightChannel) :
         m_logger(Logger::get()),
-        m_channel_left(std::make_shared<VideoChannel>(
-            WhichVideoChannel::LEFT_CHANNEL,
-            [this](int active_frame, WhichVideoChannel channel) { this->videoFrameUpdate(active_frame, channel); }
-        )),
-        m_channel_right(std::make_shared<VideoChannel>(
-            WhichVideoChannel::RIGHT_CHANNEL,
-            [this](int active_frame, WhichVideoChannel channel) { this->videoFrameUpdate(active_frame, channel); }
-        )),
+        m_channel_left(leftChannel),
+        m_channel_right(rightChannel),
         m_synchronizer(m_channel_left, m_channel_right)
     {
+        // Set up frame update callbacks
+        m_channel_left->registerFrameUpdateCallback([this](int active_frame, WhichVideoChannel channel) {
+            this->videoFrameUpdate(active_frame, channel);
+        });
         
-        m_channel_left->registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
-        m_channel_right->registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){this->videoPlaybackCompleteCallback(source_channel);});
+        m_channel_right->registerFrameUpdateCallback([this](int active_frame, WhichVideoChannel channel) {
+            this->videoFrameUpdate(active_frame, channel);
+        });
+        
+        // Set up playback complete callbacks
+        m_channel_left->registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){
+            this->videoPlaybackCompleteCallback(source_channel);
+        });
+        m_channel_right->registerVideoPlaybackCompleteCallback([this](WhichVideoChannel source_channel){
+            this->videoPlaybackCompleteCallback(source_channel);
+        });
     }
 
     void SyncManager::setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)

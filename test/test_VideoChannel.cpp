@@ -7,11 +7,12 @@
 
 using namespace VideoPlayback;
 
-class VideoChannelTest : public ::testing::Test {
-protected:
-    VideoChannelTest()
-        : channel(WhichVideoChannel::LEFT_CHANNEL, [](int, WhichVideoChannel){}) {}
-    VideoChannel channel;
+class VideoChannelTest : public ::testing::Test
+{
+    protected:
+        VideoChannelTest()
+            : channel(WhichVideoChannel::LEFT_CHANNEL) {channel.registerFrameUpdateCallback([](int, WhichVideoChannel){});}
+        VideoChannel channel;
 };
 
 TEST_F(VideoChannelTest, InitialStateIsUnloaded)
@@ -78,7 +79,7 @@ TEST_F(VideoChannelTest, SetVideoSizeInvalid)
 TEST_F(VideoChannelTest, RegisterPlaybackCompleteCallback)
 {
     bool called = false;
-    channel.registerPlaybackCompleteCallback([&called](WhichVideoChannel){ called = true; });
+    channel.registerVideoPlaybackCompleteCallback([&called](WhichVideoChannel){ called = true; });
     // No playback, so callback should not be called
     EXPECT_FALSE(called);
 }

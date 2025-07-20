@@ -8,7 +8,13 @@ namespace VideoPlayback
 
 VideoSynchronizationEngine::VideoSynchronizationEngine() : m_logger(Logger::get())
 {
-    m_syncManager = std::make_unique<SyncManager>();
+    // Create video channels
+    auto leftChannel = std::make_shared<VideoChannel>(WhichVideoChannel::LEFT_CHANNEL);
+    auto rightChannel = std::make_shared<VideoChannel>(WhichVideoChannel::RIGHT_CHANNEL);
+    
+    // Create SyncManager with the channels - it will set up all the callbacks
+    m_syncManager = std::make_unique<SyncManager>(leftChannel, rightChannel);
+    
     m_logger.info("VideoSynchronizationEngine initialized");
 }
 

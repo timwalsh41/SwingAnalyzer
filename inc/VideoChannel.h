@@ -23,8 +23,7 @@ namespace VideoPlayback
 
 class VideoChannel {
 public:
-    VideoChannel(WhichVideoChannel channel, 
-                    std::function<void(int, WhichVideoChannel)> update_callback);
+    VideoChannel(WhichVideoChannel channel);
     ~VideoChannel();
     
     // State queries
@@ -72,11 +71,11 @@ public:
     const float getRawFramerate_fps() const;
     const VideoPlaybackStatus getPlaybackStatus() const;
     const int getEffectiveVideoLengthFrames() const;
-    void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback);
     
     // Callbacks
-    void registerPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback);
-    
+    void registerFrameUpdateCallback(std::function<void(int, WhichVideoChannel)> callback);
+    void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback);
+
     // Profiling
     void enableProfiler();
     void disableProfiler();

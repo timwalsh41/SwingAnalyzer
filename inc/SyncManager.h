@@ -15,7 +15,8 @@ namespace VideoPlayback
 class SyncManager
 {
   public:
-    SyncManager();
+    SyncManager(std::shared_ptr<VideoChannel> leftChannel, 
+                std::shared_ptr<VideoChannel> rightChannel);
     ~SyncManager() = default;
     
     // Observer management

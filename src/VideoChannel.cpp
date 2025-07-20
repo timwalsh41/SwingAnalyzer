@@ -10,17 +10,16 @@
 namespace VideoPlayback
 {
 
-VideoChannel::VideoChannel(WhichVideoChannel channel, 
-                                 std::function<void(int, WhichVideoChannel)> update_callback)
-    : m_channel_id(channel)
-    , m_position_callback(update_callback)
-    , m_current_frame(0)
-    , m_framerate_multiplier(1.0f)
-    , m_video_width(100)
-    , m_video_height(100)
-    , m_profiler_frame(std::string(channel_name_map.at(m_channel_id)) + "VideoChannelFrameProfiler")
-    , m_profiler_image(std::string(channel_name_map.at(m_channel_id)) + "VideoChannelImageProfiler")
-    , m_logger(Logger::get()) 
+VideoChannel::VideoChannel(WhichVideoChannel channel)
+    : m_channel_id(channel),
+    m_position_callback(nullptr),  // Initialize as null
+    m_current_frame(0),
+    m_framerate_multiplier(1.0f),
+    m_video_width(100),
+    m_video_height(100),
+    m_profiler_frame(std::string(channel_name_map.at(m_channel_id)) + "VideoChannelFrameProfiler"),
+    m_profiler_image(std::string(channel_name_map.at(m_channel_id)) + "VideoChannelImageProfiler"),
+    m_logger(Logger::get())
 {    
     // Initialize components
     m_state_machine = std::make_unique<VideoChannelStateMachine>();
@@ -392,8 +391,25 @@ void* VideoChannel::getImageObject()
     return m_gui_updater->getImageObject();
 }
 
-void VideoChannel::registerPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback)
+void VideoChannel::registerFrameUpdateCallback(std::function<void(int, WhichVideoChannel)> callback)
 {
+    if (!callback)
+    {
+        m_logger.warn("Empty frame update callback provided");
+        return;
+    }
+
+    m_position_callback = callback;
+}
+
+void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback)
+{
+    if (!callback)
+    {
+        m_logger.warn("Empty video playback complete callback provided");
+        return;
+    }
+
     m_complete_callback = callback;
 }
 
@@ -426,11 +442,6 @@ const VideoPlaybackStatus VideoChannel::getPlaybackStatus() const
 const int VideoChannel::getEffectiveVideoLengthFrames() const
 {
     return getEffectiveLength();
-}
-
-void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback)
-{
-    registerPlaybackCompleteCallback(callback);
 }
 
 const Glib::RefPtr<Goocanvas::Image>& VideoChannel::GetImage()
