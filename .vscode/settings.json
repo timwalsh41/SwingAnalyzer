@@ -84,5 +84,8 @@
         "-I/usr/include/goocanvas-2.0"
     ],
     "plantuml.server": "http://localhost:8080",
-    "plantuml.render": "PlantUMLServer"
+    "plantuml.render": "PlantUMLServer",
+    "github.copilot.chat.codeGeneration.instructions": [
+        {"file": ".github/copilot-chat-instructions.md"}
+    ]
 }
