@@ -1,6 +1,7 @@
 #ifndef SYNCHRONIZER_H
 #define SYNCHRONIZER_H
 
+#include <ISynchronizerActions.h>
 #include <IVideoSynchronizationObserver.h>
 #include <Logger.h>
 #include <VideoChannel.h>
@@ -10,7 +11,7 @@
 namespace VideoPlayback
 {
 
-class Synchronizer
+class Synchronizer : public ISynchronizerActions
 {
     // The SyncManager and its states are friend classes that can manipulate
     // synchronizer data as needed
@@ -26,6 +27,33 @@ class Synchronizer
         
         // Observer management
         void setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer);
+        
+        // ISynchronizerActions implementation
+        void playVideos() override;
+        void pauseVideos() override;
+        void setVideosToStartPosition() override;
+        void stepVideos(int step_size) override;
+        
+        // Individual channel control (for sync state)
+        void playVideo(WhichVideoChannel channel) override;
+        void pauseVideo(WhichVideoChannel channel) override;
+        void stepVideo(WhichVideoChannel channel, int step_size) override;
+        VideoPlaybackStatus getVideoPlaybackStatus(WhichVideoChannel channel) const override;
+        
+        void setupVideoSync() override;
+        void calculateFramerateRatio() override;
+        void clearStartAndEndFrames() override;
+        void setVideoFrameOffset(int offset) override;
+        void videoPositionUpdate(WhichVideoChannel channel) override;
+        void videoFrameUpdate(WhichVideoChannel channel, bool update_joint_slider) override;
+        
+        WhichVideoChannel getVideoPositionUpdateChannel() const override;
+        float getNewVideoPosition() const override;
+        void setNewVideoPosition(float position) override;
+        int getNewActiveFrame() const override;
+        void setNewActiveFrame(int frame) override;
+        void notifyVideoPositionChanged(WhichVideoChannel channel, float position) override;
+        int getVideoFrameOffset() const override;
 
     private:
         std::weak_ptr<IVideoSynchronizationObserver> m_observer;
@@ -60,38 +88,6 @@ class Synchronizer
         // to trigger updates to the slider; we'll set the appropriate channel upon transition
         // from sync to playback mode
         WhichVideoChannel m_video_position_update_channel{NO_CHANNEL};
-
-        // set both videos to the start position, e.g. the start frame for each, with
-        // the offset applied
-        void setVideosToStartPosition();
-
-        // set the playback parameters for the synced videos:
-        // - offset between the two video channels
-        // - start and end frames for both video channels
-        // - playback length
-        // - which channel to use for slider updates
-        void setupVideoSync();
-
-        // clear the start and end frames for both video channels
-        void clearStartAndEndFrames();
-
-        // calculate the framerate ratio for the two channels
-        void calculateFramerateRatio();
-
-        // step both videos by the given number of frames, with the step size adjusted
-        // for differences in frame rate; video channel itself protects against stepping
-        // out of bounds
-        void stepVideos(int step_size);
-
-        // Receive video position update from GUI, for updating displayed video frame based on
-        // joint slider position
-        void videoPositionUpdate(WhichVideoChannel channel);
-
-        // Receive video frame update, for updating the GUI sliders on video channel
-        // frame update during playback
-        void videoFrameUpdate(WhichVideoChannel channel, bool update_joint_slider);
-
-        void pauseVideos();
 };
 
 } // namespace VideoPlayback

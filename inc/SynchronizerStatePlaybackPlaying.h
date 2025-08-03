@@ -9,7 +9,7 @@ namespace VideoPlayback
 class SynchronizerStatePlaybackPlaying : public ISynchronizerState
 {
     public:
-        SynchronizerStatePlaybackPlaying(Synchronizer*);
+        SynchronizerStatePlaybackPlaying(ISynchronizerActions*);
         ~SynchronizerStatePlaybackPlaying() = default;
 
         std::unique_ptr<ISynchronizerState> handleEvent(VideoSyncEvent event, WhichVideoChannel channel) override;

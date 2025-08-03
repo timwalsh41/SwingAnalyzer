@@ -5,7 +5,7 @@
 
 namespace VideoPlayback
 {
-    SynchronizerStatePlaybackPaused::SynchronizerStatePlaybackPaused(Synchronizer* synchronizer) : ISynchronizerState("PLAYBACK_PAUSED", synchronizer)
+    SynchronizerStatePlaybackPaused::SynchronizerStatePlaybackPaused(ISynchronizerActions* synchronizer) : ISynchronizerState("PLAYBACK_PAUSED", synchronizer)
     {
         m_logger.debug("SyncManager: entering state PLAYBACK_PAUSED");
     }
@@ -20,8 +20,7 @@ namespace VideoPlayback
 
             case PLAY_OR_PAUSE:
                 // In this state the videos should be paused, so we'll start playback
-                m_pSynchronizer->m_pChannel_left->playVideo();
-                m_pSynchronizer->m_pChannel_right->playVideo();
+                m_pSynchronizer->playVideos();
                 
                 // and enter the PLAYBACK_PLAYING
                 return std::make_unique<SynchronizerStatePlaybackPlaying>(m_pSynchronizer);

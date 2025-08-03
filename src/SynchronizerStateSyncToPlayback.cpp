@@ -8,7 +8,7 @@ start position, and then transition to PLAYBACK_PAUSED.
 */
 namespace VideoPlayback
 {
-    SynchronizerStateSyncToPlayback::SynchronizerStateSyncToPlayback(Synchronizer* synchronizer) : 
+    SynchronizerStateSyncToPlayback::SynchronizerStateSyncToPlayback(ISynchronizerActions* synchronizer) : 
         ISynchronizerState("SYNCTOPLAYBACK", synchronizer)
     {
         m_logger.debug("SyncManager: entering state SYNCTOPLAYBACK");
@@ -20,12 +20,9 @@ namespace VideoPlayback
         m_pSynchronizer->setVideosToStartPosition();
 
         // and move the scrollbar to the zero position
-        if (auto observer = m_pSynchronizer->m_observer.lock())
-        {
-            observer->onVideoPositionChanged(VideoPlayback::WhichVideoChannel::BOTH_CHANNELS, 0.0f);
-        }
+        m_pSynchronizer->notifyVideoPositionChanged(VideoPlayback::WhichVideoChannel::BOTH_CHANNELS, 0.0f);
 
-        m_logger.debug("SyncManager: updating video channel offset to %d", m_pSynchronizer->m_video_frame_offset);
+        m_logger.debug("SyncManager: updating video channel offset to %d", m_pSynchronizer->getVideoFrameOffset());
     }
 
     std::unique_ptr<ISynchronizerState> SynchronizerStateSyncToPlayback::handleEvent(VideoSyncEvent event, WhichVideoChannel channel)

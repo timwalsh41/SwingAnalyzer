@@ -68,6 +68,8 @@ Once synchronization parameters are established, the system maintains temporal a
 
 ### Frame Update Mechanism
 
+Frame update refers to the process in the `VideoChannel` to display the next frame. This is distinguished from a position update, which refers to the GUI-driven update (e.g. based on a scrollbar drag).
+
 The system uses a callback-based approach for position synchronization:
 
 1. **VideoChannel Position Callbacks**: Each `VideoChannel` is configured with a callback function (`m_position_callback`) that triggers when frame position changes during playback or seeking operations; this callback is set to the `videoFrameUpdate` method of the `SyncManager`

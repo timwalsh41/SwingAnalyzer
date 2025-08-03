@@ -14,6 +14,8 @@ I'll analyze the provided C++ classes for testability and maintainability. Let m
 
 ### 1. **Tight Coupling and Dependency Issues**
 
+<font color='green'><b>DONE!</b></font>
+
 **Problem**: Many classes have hard dependencies that make testing difficult:
 
 ```cpp
@@ -31,6 +33,8 @@ Made changes.
 
 ### 2. **Hard-coded Dependencies on GUI Framework**
 
+<font color='red'><b>REJECTED!</b></font>
+
 **Problem**: Business logic classes directly depend on GUI classes:
 
 ```cpp
@@ -47,6 +51,8 @@ Made changes.
 
 ### 3. **Violation of Single Responsibility Principle**
 
+<font color='red'><b>REJECTED!</b></font>
+
 **Problem**: `AnalyzerController` implements both `IVideoSynchronizationController` and `IVideoSynchronizationObserver`, making it responsible for both handling UI events and responding to engine notifications.
 
 **Recommendation**: Split responsibilities: 
@@ -54,6 +60,14 @@ Made changes.
 Made changes.
 
 ### 4. **State Machine Testing Challenges**
+
+<font color='blue'><b>IN PROGRESS...</b></font>
+- [ ] Main refactor - abstract the synchronizer interface for the state machine
+- [ ] Remove observer from Synchronizer? Also would remove Synchronizer::notifyVideoPositionChanged and calls to it from state machine
+- [ ] Update handleEvent to take a std::variant argument
+- [ ] Add tests for other states (PlaybackPaused was included in refactor)
+- [ ] Update/add tests for Synchronizer
+- [ ] Update markdown docs
 
 **Problem**: The current state machine implementation makes unit testing difficult because:
 - States directly access `Synchronizer` members via friend classes

@@ -67,10 +67,18 @@ add_executable(unit_tests ${TEST_SOURCES}
     src/VideoChannelState.cpp
     src/VideoPlaybackController.cpp
     src/VideoChannel.cpp
-    src/Profiler.cpp)
+    src/Profiler.cpp
+    src/Synchronizer.cpp
+    src/SynchronizerStateSync.cpp
+    src/SynchronizerStateSyncToPlayback.cpp
+    src/SynchronizerStatePlaybackPaused.cpp
+    src/SynchronizerStatePlaybackPlaying.cpp)
+
+target_include_directories(unit_tests PRIVATE test)
 
 target_link_libraries(unit_tests
     gtest_main
+    gmock
     ${GTKMM_LIBRARIES}
     ${GOOCANVASMM_LIBRARIES}
     ${OpenCV_LIBS}

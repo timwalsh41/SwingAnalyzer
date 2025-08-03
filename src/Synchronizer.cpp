@@ -14,6 +14,85 @@ namespace VideoPlayback
         m_observer = observer;
     }
 
+    void Synchronizer::playVideos()
+    {
+        m_pChannel_left->playVideo();
+        m_pChannel_right->playVideo();
+    }
+
+    void Synchronizer::playVideo(WhichVideoChannel channel)
+    {
+        switch(channel)
+        {
+            case LEFT_CHANNEL:
+                m_pChannel_left->playVideo();
+                break;
+            case RIGHT_CHANNEL:
+                m_pChannel_right->playVideo();
+                break;
+            case BOTH_CHANNELS:
+                playVideos();
+                break;
+            default:
+                m_logger.warn("Synchronizer::playVideo: Invalid channel %d", static_cast<int>(channel));
+                break;
+        }
+    }
+
+    void Synchronizer::pauseVideo(WhichVideoChannel channel)
+    {
+        switch(channel)
+        {
+            case LEFT_CHANNEL:
+                m_pChannel_left->pauseVideo();
+                break;
+            case RIGHT_CHANNEL:
+                m_pChannel_right->pauseVideo();
+                break;
+            case BOTH_CHANNELS:
+                pauseVideos();
+                break;
+            default:
+                m_logger.warn("Synchronizer::pauseVideo: Invalid channel %d", static_cast<int>(channel));
+                break;
+        }
+    }
+
+    void Synchronizer::stepVideo(WhichVideoChannel channel, int step_size)
+    {
+        switch(channel)
+        {
+            case LEFT_CHANNEL:
+                m_pChannel_left->stepFrame(step_size);
+                break;
+            case RIGHT_CHANNEL:
+                m_pChannel_right->stepFrame(step_size);
+                break;
+            default:
+                m_logger.warn("Synchronizer::stepVideo: Invalid channel %d", static_cast<int>(channel));
+                break;
+        }
+    }
+
+    VideoPlaybackStatus Synchronizer::getVideoPlaybackStatus(WhichVideoChannel channel) const
+    {
+        switch(channel)
+        {
+            case LEFT_CHANNEL:
+                return m_pChannel_left->getPlaybackStatus();
+            case RIGHT_CHANNEL:
+                return m_pChannel_right->getPlaybackStatus();
+            default:
+                m_logger.warn("Synchronizer::getVideoPlaybackStatus: Invalid channel %d", static_cast<int>(channel));
+                return VideoPlaybackStatus::PAUSED;
+        }
+    }
+
+    void Synchronizer::setVideoFrameOffset(int offset)
+    {
+        m_video_frame_offset = offset;
+    }
+
     void Synchronizer::clearStartAndEndFrames()
     {
         m_pChannel_left->setStartFrame(0);
@@ -188,6 +267,51 @@ namespace VideoPlayback
                 observer->onVideoPositionChanged(channel, new_position);
             }
         }
+    }
+
+    WhichVideoChannel Synchronizer::getVideoPositionUpdateChannel() const
+    {
+        return m_video_position_update_channel;
+    }
+
+    float Synchronizer::getNewVideoPosition() const
+    {
+        return m_new_video_position;
+    }
+
+    void Synchronizer::setNewVideoPosition(float position)
+    {
+        if (0.0 <= position && position <= 1.0)
+        {
+            m_new_video_position = position;
+        }
+        else
+        {
+            m_logger.warn("Synchronizer::setNewVideoPosition: invalid position argument received: %:.3f", position);
+        }
+    }
+
+    int Synchronizer::getNewActiveFrame() const
+    {
+        return m_new_active_frame;
+    }
+
+    void Synchronizer::setNewActiveFrame(int frame)
+    {
+        m_new_active_frame = frame;
+    }
+
+    void Synchronizer::notifyVideoPositionChanged(WhichVideoChannel channel, float position)
+    {
+        if (auto observer = m_observer.lock())
+        {
+            observer->onVideoPositionChanged(channel, position);
+        }
+    }
+
+    int Synchronizer::getVideoFrameOffset() const
+    {
+        return m_video_frame_offset;
     }
 
 } // namespace VideoPlayback

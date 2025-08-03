@@ -66,7 +66,7 @@ namespace VideoPlayback
         }
 
         // load the new position into the synchronizer
-        m_synchronizer.m_new_video_position = video_position;
+        m_synchronizer.setNewVideoPosition(video_position);
 
         // and trigger the video position update event for the state machine to handle this event
         handleEvent(VIDEO_POSITION_UPDATE, channel);
@@ -85,7 +85,7 @@ namespace VideoPlayback
     {
         if ((source_channel == LEFT_CHANNEL || source_channel == RIGHT_CHANNEL) && active_frame > 0)
         {
-            this->m_synchronizer.m_new_active_frame = active_frame;
+            this->m_synchronizer.setNewActiveFrame(active_frame);
             handleEvent(VIDEO_FRAME_UPDATE, source_channel);
         }
     }

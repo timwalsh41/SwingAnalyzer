@@ -4,7 +4,7 @@
 #include <VideoPlaybackConstants.h>
 namespace VideoPlayback
 {
-    SynchronizerStatePlaybackPlaying::SynchronizerStatePlaybackPlaying(Synchronizer* synchronizer) : ISynchronizerState("PLAYBACK_PAUSED", synchronizer)
+    SynchronizerStatePlaybackPlaying::SynchronizerStatePlaybackPlaying(ISynchronizerActions* synchronizer) : ISynchronizerState("PLAYBACK_PLAYING", synchronizer)
     {
         m_logger.debug("SyncManager: entering state PLAYBACK_PLAYING");
     }
@@ -19,8 +19,7 @@ namespace VideoPlayback
             
             case PLAY_OR_PAUSE:
                 // Videos are playing, so we'll pause them
-                m_pSynchronizer->m_pChannel_left->pauseVideo();
-                m_pSynchronizer->m_pChannel_right->pauseVideo();
+                m_pSynchronizer->pauseVideos();
 
                 // and enter the PLAYBACK_PAUSED state
                 return std::make_unique<SynchronizerStatePlaybackPaused>(m_pSynchronizer);
@@ -29,7 +28,7 @@ namespace VideoPlayback
                 // One video should still be playing, make sure it's paused
                 m_pSynchronizer->pauseVideos();
                 m_pSynchronizer->setVideosToStartPosition();
-                m_pSynchronizer->videoFrameUpdate(m_pSynchronizer->m_video_position_update_channel, true);
+                m_pSynchronizer->videoFrameUpdate(m_pSynchronizer->getVideoPositionUpdateChannel(), true);
                 return std::make_unique<SynchronizerStatePlaybackPaused>(m_pSynchronizer);
 
             case STEP_FORWARD_LARGE:
@@ -82,8 +81,7 @@ namespace VideoPlayback
 
             case SYNC_ON:
                 // Videos are playing, so we'll pause them
-                m_pSynchronizer->m_pChannel_left->pauseVideo();
-                m_pSynchronizer->m_pChannel_right->pauseVideo();
+                m_pSynchronizer->pauseVideos();
 
                 // And enter the SYNC state
                 return std::make_unique<SynchronizerStateSync>(m_pSynchronizer);

@@ -12,10 +12,10 @@ transition to the SYNC_TO_PLAYBACK state when sync mode is deselected.
 
 namespace VideoPlayback
 {
-    SynchronizerStateSync::SynchronizerStateSync(Synchronizer* synchronizer) : ISynchronizerState("SYNC", synchronizer)
+    SynchronizerStateSync::SynchronizerStateSync(ISynchronizerActions* synchronizer) : ISynchronizerState("SYNC", synchronizer)
     {
         // we'll clear out the offset once we go back into SYNC mode
-        m_pSynchronizer->m_video_frame_offset = 0;
+        m_pSynchronizer->setVideoFrameOffset(0);
         m_pSynchronizer->clearStartAndEndFrames();
 
         // and make sure the scroll bars are set correctly
@@ -41,39 +41,39 @@ namespace VideoPlayback
                 return std::make_unique<SynchronizerStateSyncToPlayback>(m_pSynchronizer);
 
             case PLAY:
-                m_pSynchronizer->m_pChannel_left->playVideo();
-                m_pSynchronizer->m_pChannel_right->playVideo();
+                m_pSynchronizer->playVideo(LEFT_CHANNEL);
+                m_pSynchronizer->playVideo(RIGHT_CHANNEL);
 
                 return nullptr;
 
             case PLAY_OR_PAUSE:
                 // if we're in sync state and we get a play event, we'll just play both videos
-                if (m_pSynchronizer->m_pChannel_left->getPlaybackStatus() == VideoPlaybackStatus::PAUSED &&
-                    m_pSynchronizer->m_pChannel_right->getPlaybackStatus() == VideoPlaybackStatus::PAUSED)
+                if (m_pSynchronizer->getVideoPlaybackStatus(LEFT_CHANNEL) == VideoPlaybackStatus::PAUSED &&
+                    m_pSynchronizer->getVideoPlaybackStatus(RIGHT_CHANNEL) == VideoPlaybackStatus::PAUSED)
                 {
-                    m_pSynchronizer->m_pChannel_left->playVideo();
-                    m_pSynchronizer->m_pChannel_right->playVideo();
+                    m_pSynchronizer->playVideo(LEFT_CHANNEL);
+                    m_pSynchronizer->playVideo(RIGHT_CHANNEL);
                 }
                 else
                 {
-                    m_pSynchronizer->m_pChannel_left->pauseVideo();
-                    m_pSynchronizer->m_pChannel_right->pauseVideo();
+                    m_pSynchronizer->pauseVideo(LEFT_CHANNEL);
+                    m_pSynchronizer->pauseVideo(RIGHT_CHANNEL);
                 }
 
                 return nullptr;
 
             case PAUSE:
                 // Pause both channels regardless of playback status
-                m_pSynchronizer->m_pChannel_left->pauseVideo();
-                m_pSynchronizer->m_pChannel_right->pauseVideo();
+                m_pSynchronizer->pauseVideo(LEFT_CHANNEL);
+                m_pSynchronizer->pauseVideo(RIGHT_CHANNEL);
 
                 return nullptr;
 
             case STEP_FORWARD_SMALL:
                 if (LEFT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_left->stepFrame(FRAME_STEP_SMALL);
+                    m_pSynchronizer->stepVideo(LEFT_CHANNEL, FRAME_STEP_SMALL);
                 else if (RIGHT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_right->stepFrame(FRAME_STEP_SMALL);
+                    m_pSynchronizer->stepVideo(RIGHT_CHANNEL, FRAME_STEP_SMALL);
                 else
                     m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
 
@@ -81,9 +81,9 @@ namespace VideoPlayback
 
             case STEP_FORWARD_LARGE:
                 if (LEFT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_left->stepFrame(FRAME_STEP_LARGE);
+                    m_pSynchronizer->stepVideo(LEFT_CHANNEL, FRAME_STEP_LARGE);
                 else if (RIGHT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_right->stepFrame(FRAME_STEP_LARGE);
+                    m_pSynchronizer->stepVideo(RIGHT_CHANNEL, FRAME_STEP_LARGE);
                 else
                     m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
 
@@ -91,9 +91,9 @@ namespace VideoPlayback
 
             case STEP_BACKWARD_SMALL:
                 if (LEFT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_left->stepFrame(-FRAME_STEP_SMALL);
+                    m_pSynchronizer->stepVideo(LEFT_CHANNEL, -FRAME_STEP_SMALL);
                 else if (RIGHT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_right->stepFrame(-FRAME_STEP_SMALL);
+                    m_pSynchronizer->stepVideo(RIGHT_CHANNEL, -FRAME_STEP_SMALL);
                 else
                     m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
 
@@ -101,9 +101,9 @@ namespace VideoPlayback
 
             case STEP_BACKWARD_LARGE:
                 if (LEFT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_left->stepFrame(-FRAME_STEP_LARGE);
+                    m_pSynchronizer->stepVideo(LEFT_CHANNEL, -FRAME_STEP_LARGE);
                 else if (RIGHT_CHANNEL == channel)
-                    m_pSynchronizer->m_pChannel_right->stepFrame(-FRAME_STEP_LARGE);
+                    m_pSynchronizer->stepVideo(RIGHT_CHANNEL, -FRAME_STEP_LARGE);
                 else
                     m_logger.warn("SynchronizerStateSync: Invalid channel selected for frame step %d", channel);
 

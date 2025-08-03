@@ -7,6 +7,8 @@ Video channel frame update is the process of retrieving and displaying a new vid
 
 The update pathway for each mechanism involves the modular VideoChannel architecture relying on components `OpenCVVideoDecoder`, `ThreadSafeFrameBuffer`, `GTKImageUpdater`, and `VideoFrameManager`.
 
+Note that we use the term **frame update** to represent the process of the video channel retrieving and displaying a new frame. This is distinct from the **video position update**, which refers to the user-initiated seeking within the video channels (e.g. via scroll bar drag).
+
 ## Internal playback
 
 In internal playback, the displayed frame is updated periodically by a background thread managed by the `VideoPlaybackController`. `VideoChannel::playbackWorkerFunction` runs in an independent thread, looping at the desired framerate. In each loop iteration, it will retrieve the next frame from the `OpenCVVideoDecoder`, store it in a thread-safe frame buffer, and signal the main thread via a `Glib::Dispatcher` to update the GUI. The main thread processes the frame through the `onFrameUpdate` dispatcher callback. In the callback, it retrieves the frame from the thread-safe buffer, resizes it as needed, and updates the GTK canvas image. At each frame update, a position callback to the `SyncManager` is triggered to update the slider as well to maintain synchronization between the video position and the GUI components (e.g. scrollbars).
