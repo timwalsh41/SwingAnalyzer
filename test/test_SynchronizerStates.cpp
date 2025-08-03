@@ -121,8 +121,6 @@ TEST_F(SynchronizerStatePlaybackPausedTest, SyncOn_TransitionsToSyncState)
     // Tightly coupled to SynchronizerStateStateSync implementation
     EXPECT_CALL(*mock_synchronizer, setVideoFrameOffset(0)).Times(1);
     EXPECT_CALL(*mock_synchronizer, clearStartAndEndFrames()).Times(1);
-    EXPECT_CALL(*mock_synchronizer, videoFrameUpdate(LEFT_CHANNEL, false)).Times(1);
-    EXPECT_CALL(*mock_synchronizer, videoFrameUpdate(RIGHT_CHANNEL, false)).Times(1);
 
     // Act
     auto next_state = state->handleEvent(SYNC_ON, NO_CHANNEL);
@@ -130,6 +128,15 @@ TEST_F(SynchronizerStatePlaybackPausedTest, SyncOn_TransitionsToSyncState)
     // Assert
     ASSERT_NE(next_state, nullptr);
     EXPECT_EQ(next_state->getName(), "SYNC");
+
+    // Tick the SYNC state to get the video position update
+    EXPECT_CALL(*mock_synchronizer, videoPositionUpdate(BOTH_CHANNELS)).Times(1);
+
+    // Act
+    next_state = next_state->handleEvent(TICK, NO_CHANNEL);
+
+    // Assert
+    ASSERT_EQ(next_state, nullptr);
 }
 
 TEST_F(SynchronizerStatePlaybackPausedTest, TickEvent_DoesNothing_StaysInSameState)
@@ -206,9 +213,7 @@ TEST_F(SynchronizerStatePlaybackPlayingTest, SyncOn_PausesVideos_TransitionsToSy
     // Expect calls that will be made by SynchronizerStateSync constructor
     EXPECT_CALL(*mock_synchronizer, setVideoFrameOffset(0)).Times(1);
     EXPECT_CALL(*mock_synchronizer, clearStartAndEndFrames()).Times(1);
-    EXPECT_CALL(*mock_synchronizer, videoFrameUpdate(LEFT_CHANNEL, false)).Times(1);
-    EXPECT_CALL(*mock_synchronizer, videoFrameUpdate(RIGHT_CHANNEL, false)).Times(1);
-
+    
     // Act
     auto next_state = state->handleEvent(SYNC_ON, NO_CHANNEL);
 

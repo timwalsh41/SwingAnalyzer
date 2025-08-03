@@ -18,10 +18,6 @@ namespace VideoPlayback
         m_pSynchronizer->setVideoFrameOffset(0);
         m_pSynchronizer->clearStartAndEndFrames();
 
-        // and make sure the scroll bars are set correctly
-        m_pSynchronizer->videoFrameUpdate(LEFT_CHANNEL, false);
-        m_pSynchronizer->videoFrameUpdate(RIGHT_CHANNEL, false);
-
         m_logger.debug("SyncManager: entering state SYNC");
     }
 
@@ -30,6 +26,15 @@ namespace VideoPlayback
         switch(event)
         {
             case TICK:
+                // on tick, we'll trigger a video position update to make sure the scrollbars get updated
+                // we need to do this on the tick rather than in the constructor (e.g. on state entry) because
+                // the video position update is handled differently depending on state; we need to trigger this
+                // update while the Synchronizer sees we are in the Sync state (e.g. the constructor has finished)
+                // to ensure the individual channel scrollbars are updated rather than the joint scrollbar
+                m_pSynchronizer->videoPositionUpdate(BOTH_CHANNELS); 
+
+                return nullptr;
+
             case SYNC_ON:
             case PLAYBACK_COMPLETE:
             case SET_VIDEO_TO_START:

@@ -96,7 +96,7 @@ namespace VideoPlayback
     // their frames during playback; we pass this on to the state machine to handle the event
     void SyncManager::videoFrameUpdate(int active_frame, WhichVideoChannel source_channel)
     {
-        if ((source_channel == LEFT_CHANNEL || source_channel == RIGHT_CHANNEL) && active_frame > 0)
+        if (source_channel == LEFT_CHANNEL || source_channel == RIGHT_CHANNEL)
         {
             handleEvent(VIDEO_FRAME_UPDATE, source_channel);
 
