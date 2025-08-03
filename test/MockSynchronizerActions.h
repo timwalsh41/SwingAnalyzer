@@ -32,9 +32,6 @@ public:
     MOCK_METHOD(WhichVideoChannel, getVideoPositionUpdateChannel, (), (const, override));
     MOCK_METHOD(float, getNewVideoPosition, (), (const, override));
     MOCK_METHOD(void, setNewVideoPosition, (float position), (override));
-    MOCK_METHOD(int, getNewActiveFrame, (), (const, override));
-    MOCK_METHOD(void, setNewActiveFrame, (int frame), (override));
-    MOCK_METHOD(void, notifyVideoPositionChanged, (WhichVideoChannel channel, float position), (override));
     MOCK_METHOD(int, getVideoFrameOffset, (), (const, override));
 };
 

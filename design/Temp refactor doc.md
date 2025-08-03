@@ -62,10 +62,11 @@ Made changes.
 ### 4. **State Machine Testing Challenges**
 
 <font color='blue'><b>IN PROGRESS...</b></font>
-- [ ] Main refactor - abstract the synchronizer interface for the state machine
+- [x] Main refactor - abstract the synchronizer interface for the state machine
 - [ ] Remove observer from Synchronizer? Also would remove Synchronizer::notifyVideoPositionChanged and calls to it from state machine
+- [ ] Do we need special handling for SYNCTOPLAYBACK transition in SyncManager::handleEvent?
 - [ ] Update handleEvent to take a std::variant argument
-- [ ] Add tests for other states (PlaybackPaused was included in refactor)
+- [ ] Add tests for other states (PlaybackPaused & PlaybackPlaying were included in refactor)
 - [ ] Update/add tests for Synchronizer
 - [ ] Update markdown docs
 

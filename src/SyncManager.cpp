@@ -33,7 +33,6 @@ namespace VideoPlayback
     void SyncManager::setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
     {
         m_observer = observer;
-        m_synchronizer.setObserver(observer);
     }
 
     void SyncManager::start()
@@ -48,7 +47,21 @@ namespace VideoPlayback
         
         while (next_state)
         {
+            // Check if we're transitioning to SYNCTOPLAYBACK which needs to notify position change
+            // bool transitioning_to_sync_to_playback = (next_state->getName() == "SYNCTOPLAYBACK");
+
             m_state = std::move(next_state);
+
+            /*
+            // For SYNCTOPLAYBACK state, notify position change after construction
+            if (transitioning_to_sync_to_playback)
+            {
+                if (auto observer = m_observer.lock())
+                {
+                    observer->onVideoPositionChanged(BOTH_CHANNELS, 0.0f);
+                }
+            }
+            */
 
             // immediately tick the new state, as some states can transition directly out
             next_state = m_state->handleEvent(TICK, NO_CHANNEL);
@@ -85,8 +98,29 @@ namespace VideoPlayback
     {
         if ((source_channel == LEFT_CHANNEL || source_channel == RIGHT_CHANNEL) && active_frame > 0)
         {
-            this->m_synchronizer.setNewActiveFrame(active_frame);
             handleEvent(VIDEO_FRAME_UPDATE, source_channel);
+
+            // After state handles the video frame update, check if we need to notify observers
+            // The synchronizer will have calculated the new position
+            float new_position = m_synchronizer.getNewVideoPosition();
+
+            if (auto observer = m_observer.lock())
+            {
+                // In sync mode, notify for individual channels; in playback mode, notify for both channels
+                // The state machine determines which mode we're in through the update_joint_slider parameter
+                if (m_state->getName() == "SYNC")
+                {
+                    observer->onVideoPositionChanged(source_channel, new_position);
+                }
+                else
+                {
+                    // In playback states, only notify if this is the active channel for position tracking
+                    if (source_channel == m_synchronizer.getVideoPositionUpdateChannel())
+                    {
+                        observer->onVideoPositionChanged(BOTH_CHANNELS, new_position);
+                    }
+                }
+            }
         }
     }
 

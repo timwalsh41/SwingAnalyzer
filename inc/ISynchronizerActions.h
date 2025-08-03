@@ -37,11 +37,6 @@ public:
     virtual WhichVideoChannel getVideoPositionUpdateChannel() const = 0;
     virtual float getNewVideoPosition() const = 0;
     virtual void setNewVideoPosition(float position) = 0;
-    virtual int getNewActiveFrame() const = 0;
-    virtual void setNewActiveFrame(int frame) = 0;
-    
-    // Observer management - needed for SynchronizerStateSyncToPlayback
-    virtual void notifyVideoPositionChanged(WhichVideoChannel channel, float position) = 0;
     virtual int getVideoFrameOffset() const = 0;
 };
 

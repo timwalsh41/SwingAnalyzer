@@ -9,11 +9,6 @@ namespace VideoPlayback
     {
     }
 
-    void Synchronizer::setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer)
-    {
-        m_observer = observer;
-    }
-
     void Synchronizer::playVideos()
     {
         m_pChannel_left->playVideo();
@@ -218,6 +213,8 @@ namespace VideoPlayback
 
     void Synchronizer::videoFrameUpdate(WhichVideoChannel channel, bool update_joint_slider)
     {
+        // Calculate the new video position based on the current frame and store it
+        // for retrieval by the calling component
         float new_position;
         int video_length;
         VideoChannel* pChannel;
@@ -243,30 +240,15 @@ namespace VideoPlayback
 
         if (video_length == 0)
         {
-            new_position = 0.;
+            m_new_video_position = 0.;
             m_logger.warn("Synchronizer::videoFrameUpdate: video length is zero, setting position to 0");
-            
         }
         else
         {
-            new_position = static_cast<float>(pChannel->getActiveFrame() - pChannel->getStartFrame()) 
+            m_new_video_position = static_cast<float>(pChannel->getActiveFrame() - pChannel->getStartFrame()) 
                             / (pChannel->getEndFrame() - pChannel->getStartFrame());
         }
 
-        if  (update_joint_slider)
-        {
-            if (auto observer = m_observer.lock())
-            {
-                observer->onVideoPositionChanged(WhichVideoChannel::BOTH_CHANNELS, new_position);
-            }
-        }
-        else
-        {
-            if (auto observer = m_observer.lock())
-            {
-                observer->onVideoPositionChanged(channel, new_position);
-            }
-        }
     }
 
     WhichVideoChannel Synchronizer::getVideoPositionUpdateChannel() const
@@ -288,24 +270,6 @@ namespace VideoPlayback
         else
         {
             m_logger.warn("Synchronizer::setNewVideoPosition: invalid position argument received: %:.3f", position);
-        }
-    }
-
-    int Synchronizer::getNewActiveFrame() const
-    {
-        return m_new_active_frame;
-    }
-
-    void Synchronizer::setNewActiveFrame(int frame)
-    {
-        m_new_active_frame = frame;
-    }
-
-    void Synchronizer::notifyVideoPositionChanged(WhichVideoChannel channel, float position)
-    {
-        if (auto observer = m_observer.lock())
-        {
-            observer->onVideoPositionChanged(channel, position);
         }
     }
 

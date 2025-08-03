@@ -19,8 +19,8 @@ namespace VideoPlayback
         // we'll set both videos to the start frame to be ready to play
         m_pSynchronizer->setVideosToStartPosition();
 
-        // and move the scrollbar to the zero position
-        m_pSynchronizer->notifyVideoPositionChanged(VideoPlayback::WhichVideoChannel::BOTH_CHANNELS, 0.0f);
+        // and set the position to be notified to observers
+        m_pSynchronizer->setNewVideoPosition(0.0f);
 
         m_logger.debug("SyncManager: updating video channel offset to %d", m_pSynchronizer->getVideoFrameOffset());
     }

@@ -2,7 +2,6 @@
 #define SYNCHRONIZER_H
 
 #include <ISynchronizerActions.h>
-#include <IVideoSynchronizationObserver.h>
 #include <Logger.h>
 #include <VideoChannel.h>
 
@@ -24,9 +23,6 @@ class Synchronizer : public ISynchronizerActions
     public:
         Synchronizer(std::shared_ptr<VideoChannel> channel_left, std::shared_ptr<VideoChannel> channel_right);
         ~Synchronizer() = default;
-        
-        // Observer management
-        void setObserver(std::weak_ptr<IVideoSynchronizationObserver> observer);
         
         // ISynchronizerActions implementation
         void playVideos() override;
@@ -50,13 +46,9 @@ class Synchronizer : public ISynchronizerActions
         WhichVideoChannel getVideoPositionUpdateChannel() const override;
         float getNewVideoPosition() const override;
         void setNewVideoPosition(float position) override;
-        int getNewActiveFrame() const override;
-        void setNewActiveFrame(int frame) override;
-        void notifyVideoPositionChanged(WhichVideoChannel channel, float position) override;
         int getVideoFrameOffset() const override;
 
     private:
-        std::weak_ptr<IVideoSynchronizationObserver> m_observer;
         std::shared_ptr<VideoChannel> m_pChannel_left, m_pChannel_right;
         Logger &m_logger;
 
@@ -79,10 +71,6 @@ class Synchronizer : public ISynchronizerActions
         // member variable to hold the new position setpoint from the GUI callback
         // for the joint slider
         float m_new_video_position{0};
-
-        // member variable to hold the new active frame from the video channel frame
-        // update callback
-        int m_new_active_frame{0};
 
         // when running in playback mode, we'll use the frame update from only one channel
         // to trigger updates to the slider; we'll set the appropriate channel upon transition
