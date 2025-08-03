@@ -19,6 +19,7 @@ The video synchronization system enables users to time-align two video channels 
     - Manages observer notifications for video position changes
 
 **Synchronizer** manages the synchronization logic and data:
+- Implements `ISynchronizerActions` interface providing clean contract for state machine interaction
 - Calculates frame offsets between video channels
 - Handles framerate differences between videos
 - Manages synchronized playback parameters
@@ -185,13 +186,13 @@ The classes involved in synchronization are:
   - Routes events through the synchronization state machine
   - Manages observer notifications for position updates
 - `Synchronizer` manages the core synchronization logic and data
+  - Implements `ISynchronizerActions` interface for clean separation from state machine
   - Calculates frame offsets and handles framerate differences
   - Uses observer pattern to route event information to the GUI
-  - Friend classes with `SyncManager` and synchronization state machine states for controlled access
 
 **State Machine:**
 - `ISynchronizerState` implements the interface for state machine states
-  - Provides access to Synchronizer and logger for state implementations
+  - Receives `ISynchronizerActions` interface for accessing synchronizer functionality
   - Contains state name and event handling interface
   - The concrete states implemented are:
     - `SynchronizerStateSync`: Independent video channel control for manual alignment

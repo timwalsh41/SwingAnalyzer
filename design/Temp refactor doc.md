@@ -65,10 +65,9 @@ Made changes.
 - [x] Main refactor - abstract the synchronizer interface for the state machine
 - [x] Remove observer from Synchronizer? Also would remove Synchronizer::notifyVideoPositionChanged and calls to it from state machine
 - [x] Do we need special handling for SYNCTOPLAYBACK transition in SyncManager::handleEvent?
-- [ ] Update handleEvent to take a std::variant argument
-- [ ] Add tests for other states (PlaybackPaused & PlaybackPlaying were included in refactor)
+- [x] Add tests for other states (PlaybackPaused & PlaybackPlaying were included in refactor)
 - [ ] Update/add tests for Synchronizer
-- [ ] Update markdown docs
+- [x] Update markdown docs
 
 **Problem**: The current state machine implementation makes unit testing difficult because:
 - States directly access `Synchronizer` members via friend classes

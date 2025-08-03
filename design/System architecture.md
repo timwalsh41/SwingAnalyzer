@@ -84,6 +84,7 @@ This section presents the major hierarchical layers of the software and introduc
         - `SynchronizerStatePlaybackPaused`: Synchronized playback when paused
         - `SynchronizerStatePlaybackPlaying`: Synchronized playback when playing
 - **Synchronizer**: Core synchronization logic managing coordination between the two video channels
+    - Implements `ISynchronizerActions` interface to decouple from state machine
     - Calculates frame offsets and manages synchronized playback parameters
     - Handles framerate differences and position updates
 
@@ -215,10 +216,31 @@ package "Business Logic Layer" #LightYellow {
 }
 
 package "State Machine" #LightCyan {
+    interface ISynchronizerActions {
+        +playVideos(): void
+        +pauseVideos(): void
+        +setVideosToStartPosition(): void
+        +stepVideos(step_size): void
+        +playVideo(channel): void
+        +pauseVideo(channel): void
+        +stepVideo(channel, step_size): void
+        +getVideoPlaybackStatus(channel): VideoPlaybackStatus
+        +setupVideoSync(): void
+        +calculateFramerateRatio(): void
+        +clearStartAndEndFrames(): void
+        +setVideoFrameOffset(offset): void
+        +videoPositionUpdate(channel): void
+        +videoFrameUpdate(channel, update_joint_slider): void
+        +getVideoPositionUpdateChannel(): WhichVideoChannel
+        +getNewVideoPosition(): float
+        +setNewVideoPosition(position): void
+        +getVideoFrameOffset(): int
+    }
+
     interface ISynchronizerState {
         +handleEvent(event, channel): unique_ptr<ISynchronizerState>
         +getName(): string&
-        #m_pSynchronizer: Synchronizer*
+        #m_pSynchronizer: ISynchronizerActions*
         #m_name: string
     }
 
@@ -345,10 +367,12 @@ AnalyzerController o-- VideoSynchronizationEngine
 VideoSynchronizationEngine *-- SyncManager
 SyncManager *-- Synchronizer
 SyncManager o-- ISynchronizerState
-ISynchronizerState <|-- SynchronizerStateSync
-ISynchronizerState <|-- SynchronizerStateSyncToPlayback
-ISynchronizerState <|-- SynchronizerStatePlaybackPaused
-ISynchronizerState <|-- SynchronizerStatePlaybackPlaying
+Synchronizer ..|> ISynchronizerActions
+ISynchronizerState --> ISynchronizerActions
+ISynchronizerState <|.. SynchronizerStateSync
+ISynchronizerState <|.. SynchronizerStateSyncToPlayback
+ISynchronizerState <|.. SynchronizerStatePlaybackPaused
+ISynchronizerState <|.. SynchronizerStatePlaybackPlaying
 SyncManager o-- VideoChannel
 Synchronizer --> VideoChannel
 VideoChannel *-- VideoChannelStateMachine

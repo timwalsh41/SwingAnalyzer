@@ -47,29 +47,14 @@ namespace VideoPlayback
         
         while (next_state)
         {
-            // Check if we're transitioning to SYNCTOPLAYBACK which needs to notify position change
-            // bool transitioning_to_sync_to_playback = (next_state->getName() == "SYNCTOPLAYBACK");
-
             m_state = std::move(next_state);
-
-            /*
-            // For SYNCTOPLAYBACK state, notify position change after construction
-            if (transitioning_to_sync_to_playback)
-            {
-                if (auto observer = m_observer.lock())
-                {
-                    observer->onVideoPositionChanged(BOTH_CHANNELS, 0.0f);
-                }
-            }
-            */
 
             // immediately tick the new state, as some states can transition directly out
             next_state = m_state->handleEvent(TICK, NO_CHANNEL);
         }
     }
 
-    // Receive video position update, affects playback mode only, for updating video position based on
-    // joint slider position
+    // Receive video position update trigger from GUI/controller
     void SyncManager::videoPositionUpdate(float video_position, WhichVideoChannel channel)
     {
         if (video_position < 0 || video_position > 1)
