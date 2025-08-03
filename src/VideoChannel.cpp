@@ -337,7 +337,7 @@ float VideoChannel::getFramerateMultiplier() const
     return isLoaded() ? m_framerate_multiplier : 0.0f;
 }
 
-float VideoChannel::getFramerate() const
+float VideoChannel::getFramerate_fps() const
 {
     if (!isLoaded()) return 0.0f;
     
@@ -386,11 +386,6 @@ void VideoChannel::setVideoSize(int width, int height)
                  channel_name_map.at(m_channel_id), m_video_width, m_video_height);
 }
 
-void* VideoChannel::getImageObject()
-{
-    return m_gui_updater->getImageObject();
-}
-
 void VideoChannel::registerFrameUpdateCallback(std::function<void(int, WhichVideoChannel)> callback)
 {
     if (!callback)
@@ -414,34 +409,24 @@ void VideoChannel::registerVideoPlaybackCompleteCallback(std::function<void(Whic
 }
 
 // Compatibility methods with old VideoChannel API
-const bool VideoChannel::IsVideoLoaded() const
+bool VideoChannel::IsVideoLoaded() const
 {
     return isLoaded();
 }
 
-const int VideoChannel::getActiveFrame() const
+int VideoChannel::getActiveFrame() const
 {
     return getCurrentFrame();
 }
 
-const int VideoChannel::getFrameCount() const
+int VideoChannel::getFrameCount() const
 {
     return getTotalFrames();
 }
 
-const float VideoChannel::getRawFramerate_fps() const
-{
-    return getFramerate();
-}
-
-const VideoPlaybackStatus VideoChannel::getPlaybackStatus() const
+VideoPlaybackStatus VideoChannel::getPlaybackStatus() const
 {
     return isPlaying() ? PLAYING : PAUSED;
-}
-
-const int VideoChannel::getEffectiveVideoLengthFrames() const
-{
-    return getEffectiveLength();
 }
 
 const Glib::RefPtr<Goocanvas::Image>& VideoChannel::GetImage()

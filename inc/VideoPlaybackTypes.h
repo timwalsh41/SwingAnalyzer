@@ -23,7 +23,8 @@ enum VideoLoadStatus
 enum VideoPlaybackStatus
 {
     PLAYING,
-    PAUSED
+    PAUSED,
+    UNKNOWN
 };
 
 enum VideoSyncEvent

@@ -1,5 +1,6 @@
 #include <AnalyzerController.h>
 #include <AnalyzerGui.h>
+#include <IVideoChannel.h>
 #include <VideoPlaybackConstants.h>
 
 AnalyzerController::AnalyzerController(AnalyzerGui* gui) 
@@ -101,7 +102,7 @@ void AnalyzerController::onVideoLoaded(VideoPlayback::WhichVideoChannel channel,
     // If video loading was successful, set up the video renderer to connect the video to the GUI canvas
     if (success)
     {
-        VideoPlayback::VideoChannel* videoChannel = m_engine->getVideoChannel(channel);
+        VideoPlayback::IVideoChannel* videoChannel = m_engine->getVideoChannel(channel);
         if (videoChannel)
         {
             m_gui->setVideoRenderer(channel, videoChannel);
@@ -118,9 +119,4 @@ void AnalyzerController::onVideoUnloaded(VideoPlayback::WhichVideoChannel channe
 {
     m_logger.info("AnalyzerController::onVideoUnloaded(%d)", static_cast<int>(channel));
     m_gui->updateVideoUnloadedState(channel);
-}
-
-VideoPlayback::VideoChannel* AnalyzerController::getVideoChannel(VideoPlayback::WhichVideoChannel channel)
-{
-    return m_engine->getVideoChannel(channel);
 }

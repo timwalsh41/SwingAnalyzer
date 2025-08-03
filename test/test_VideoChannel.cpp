@@ -60,9 +60,9 @@ TEST_F(VideoChannelTest, CompatibilityMethodsReturnDefaults)
     EXPECT_FALSE(channel.IsVideoLoaded());
     EXPECT_EQ(channel.getActiveFrame(), 0);
     EXPECT_EQ(channel.getFrameCount(), 0);
-    EXPECT_FLOAT_EQ(channel.getRawFramerate_fps(), 0.0f);
+    EXPECT_FLOAT_EQ(channel.getFramerate_fps(), 0.0f);
     EXPECT_EQ(channel.getPlaybackStatus(), PAUSED);
-    EXPECT_EQ(channel.getEffectiveVideoLengthFrames(), 0);
+    EXPECT_EQ(channel.getEffectiveLength(), 0);
 }
 
 TEST_F(VideoChannelTest, SetFramerateMultiplierInvalid)

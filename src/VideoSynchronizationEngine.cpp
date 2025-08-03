@@ -1,3 +1,4 @@
+#include <VideoChannel.h>
 #include <VideoSynchronizationEngine.h>
 #include <VideoPlaybackConstants.h>
 
@@ -9,8 +10,8 @@ namespace VideoPlayback
 VideoSynchronizationEngine::VideoSynchronizationEngine() : m_logger(Logger::get())
 {
     // Create video channels
-    auto leftChannel = std::make_shared<VideoChannel>(WhichVideoChannel::LEFT_CHANNEL);
-    auto rightChannel = std::make_shared<VideoChannel>(WhichVideoChannel::RIGHT_CHANNEL);
+    std::shared_ptr<IVideoChannel> leftChannel = std::make_shared<VideoChannel>(WhichVideoChannel::LEFT_CHANNEL);
+    std::shared_ptr<IVideoChannel> rightChannel = std::make_shared<VideoChannel>(WhichVideoChannel::RIGHT_CHANNEL);
     
     // Create SyncManager with the channels - it will set up all the callbacks
     m_syncManager = std::make_unique<SyncManager>(leftChannel, rightChannel);
@@ -70,9 +71,8 @@ void VideoSynchronizationEngine::loadVideo(WhichVideoChannel channel, const std:
 {
     m_logger.info("VideoSynchronizationEngine::loadVideo(%d, %s)", static_cast<int>(channel), path.c_str());
     
-    // Get the appropriate video channel
-    VideoChannel* videoChannel = getVideoChannel(channel);
-    if (videoChannel)
+    // Get the appropriate video channel (as interface for operations)
+    if (auto* videoChannel = getVideoChannel(channel))
     {
         VideoLoadStatus status = videoChannel->loadVideo(path);
         bool success = (status == VIDEO_LOAD_SUCCESS);
@@ -90,8 +90,7 @@ void VideoSynchronizationEngine::unloadVideo(WhichVideoChannel channel)
 {
     m_logger.info("VideoSynchronizationEngine::unloadVideo(%d)", static_cast<int>(channel));
     
-    VideoChannel* videoChannel = getVideoChannel(channel);
-    if (videoChannel)
+    if (auto* videoChannel = getVideoChannel(channel))
     {
         videoChannel->unloadVideo();
         notifyVideoUnloaded(channel);
@@ -126,7 +125,7 @@ void VideoSynchronizationEngine::setPlaybackRate(float multiplier)
     m_syncManager->handleEvent(VideoSyncEvent::PLAYBACK_RATE_UPDATE, WhichVideoChannel::BOTH_CHANNELS);
 }
 
-VideoChannel* VideoSynchronizationEngine::getVideoChannel(WhichVideoChannel channel)
+IVideoChannel* VideoSynchronizationEngine::getVideoChannel(WhichVideoChannel channel)
 {
     switch (channel)
     {

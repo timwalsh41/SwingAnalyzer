@@ -4,7 +4,7 @@
 
 namespace VideoPlayback
 {
-    Synchronizer::Synchronizer(std::shared_ptr<VideoChannel> channel_left, std::shared_ptr<VideoChannel> channel_right) : 
+    Synchronizer::Synchronizer(std::shared_ptr<IVideoChannel> channel_left, std::shared_ptr<IVideoChannel> channel_right) : 
         m_pChannel_left(channel_left), m_pChannel_right(channel_right), m_logger(Logger::get())
     {
     }
@@ -79,7 +79,7 @@ namespace VideoPlayback
                 return m_pChannel_right->getPlaybackStatus();
             default:
                 m_logger.warn("Synchronizer::getVideoPlaybackStatus: Invalid channel %d", static_cast<int>(channel));
-                return VideoPlaybackStatus::PAUSED;
+                return VideoPlaybackStatus::UNKNOWN;
         }
     }
 
@@ -138,7 +138,7 @@ namespace VideoPlayback
             return;
         }
 
-        m_framerate_ratio = m_pChannel_left->getRawFramerate_fps() / m_pChannel_right->getRawFramerate_fps();
+        m_framerate_ratio = m_pChannel_left->getFramerate_fps() / m_pChannel_right->getFramerate_fps();
     }
 
     void Synchronizer::stepVideos(int step_size)
@@ -217,7 +217,7 @@ namespace VideoPlayback
         // for retrieval by the calling component
         float new_position;
         int video_length;
-        VideoChannel* pChannel;
+        IVideoChannel* pChannel;
 
         // if this is a call to update the joint slider (e.g. we are in playback mode not sync mode), then
         // discard if this is not for the active channel we use for video position tracking

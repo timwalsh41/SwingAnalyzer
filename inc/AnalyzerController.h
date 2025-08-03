@@ -38,9 +38,6 @@ public:
     void onSyncModeChanged(bool syncMode) override;
     void onVideoLoaded(VideoPlayback::WhichVideoChannel channel, bool success) override;
     void onVideoUnloaded(VideoPlayback::WhichVideoChannel channel) override;
-    
-    // Access to video channels for GUI setup
-    VideoPlayback::VideoChannel* getVideoChannel(VideoPlayback::WhichVideoChannel channel);
 
 private:
     AnalyzerGui* m_gui;

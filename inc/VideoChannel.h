@@ -2,6 +2,7 @@
 #define VIDEOCHANNEL_H
 
 #include <IGUIImageUpdater.h>
+#include <IVideoChannel.h>
 #include <IVideoDecoder.h>
 #include <Logger.h>
 #include <Profiler.h>
@@ -21,62 +22,58 @@
 namespace VideoPlayback
 {
 
-class VideoChannel {
+class VideoChannel : public IVideoChannel {
 public:
     VideoChannel(WhichVideoChannel channel);
     ~VideoChannel();
     
+    // ================ IVideoChannel interface implementation ================
+    // Video operations
+    VideoLoadStatus loadVideo(const std::string& path) override;
+    void unloadVideo() override;
+    void playVideo() override;
+    void pauseVideo() override;
+    void stepFrame(int offset) override;
+    void seekToFrame(int frame) override;
+    void setVideoToStart() override;
+
+    // Frame range management
+    void setStartFrame(int start) override;
+    void setEndFrame(int end) override;
+    int getStartFrame() const override;
+    int getEndFrame() const override;
+    
+    // Playback control
+    void setFramerateMultiplier(float multiplier) override;
+    float getFramerateMultiplier() const override;
+
     // State queries
     bool isLoaded() const;
     bool isPlaying() const;
+    float getFramerate_fps() const override;
     VideoChannelState getState() const;
+    bool IsVideoLoaded() const override;
+    int getActiveFrame() const override;
+    VideoPlaybackStatus getPlaybackStatus() const override;
+
+    // Video size
+    VideoSize getVideoSize() const override;
+    void setVideoSize(int width, int height) override;
+
+    // Callbacks
+    void registerFrameUpdateCallback(std::function<void(int, WhichVideoChannel)> callback) override;
+    void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback) override;
+
+    // GUI integration
+    const Glib::RefPtr<Goocanvas::Image>& GetImage() override;
     
-    // Video operations
-    VideoLoadStatus loadVideo(const std::string& path);
-    void unloadVideo();
-    void playVideo();
-    void pauseVideo();
-    void stepFrame(int offset);
-    void seekToFrame(int frame);
-    void setVideoToStart();
-    
-    // Frame range management
-    void setStartFrame(int start);
-    void setEndFrame(int end);
-    int getStartFrame() const;
-    int getEndFrame() const;
+
+    // ================ Other public methods ================
+    // (mainly used for testing)
     int getEffectiveLength() const;
-    
-    // Frame position
     int getCurrentFrame() const;
     int getTotalFrames() const;
-    
-    // Playback control
-    void setFramerateMultiplier(float multiplier);
-    float getFramerateMultiplier() const;
-    float getFramerate() const;
-    
-    // Video properties
-    VideoSize getVideoSize() const;
-    void setVideoSize(int width, int height);
-    
-    // GUI integration
-    void* getImageObject();
-    const Glib::RefPtr<Goocanvas::Image>& GetImage(); // Old API compatibility
-    
-    // Compatibility methods with old VideoChannel API
-    const bool IsVideoLoaded() const;
-    const int getActiveFrame() const;
-    const int getFrameCount() const;
-    const float getRawFramerate_fps() const;
-    const VideoPlaybackStatus getPlaybackStatus() const;
-    const int getEffectiveVideoLengthFrames() const;
-    
-    // Callbacks
-    void registerFrameUpdateCallback(std::function<void(int, WhichVideoChannel)> callback);
-    void registerVideoPlaybackCompleteCallback(std::function<void(WhichVideoChannel)> callback);
-
-    // Profiling
+    int getFrameCount() const;
     void enableProfiler();
     void disableProfiler();
 

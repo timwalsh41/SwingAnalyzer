@@ -2,9 +2,9 @@
 #define VIDEOSYNCHRONIZATIONENGINE_H
 
 #include <IVideoSynchronizationObserver.h>
+#include <IVideoChannel.h>
 #include <Logger.h>
 #include <SyncManager.h>
-#include <VideoChannel.h>
 
 #include <memory>
 #include <vector>
@@ -41,7 +41,7 @@ public:
     void setPlaybackRate(float multiplier);
     
     // Access to video channels for canvas setup
-    VideoChannel* getVideoChannel(WhichVideoChannel channel);
+    IVideoChannel* getVideoChannel(WhichVideoChannel channel);
     
     // Engine lifecycle
     void start();

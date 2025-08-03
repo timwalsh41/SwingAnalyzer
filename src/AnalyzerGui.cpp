@@ -1,5 +1,5 @@
 #include <AnalyzerGui.h>
-#include <VideoChannel.h>
+#include <IVideoChannel.h>
 #include <VideoPlaybackConstants.h>
 
 #include <iomanip>
@@ -121,7 +121,7 @@ void AnalyzerGui::updateVideoUnloadedState(VideoPlayback::WhichVideoChannel chan
     // Update GUI to reflect unloaded state
 }
 
-void AnalyzerGui::setVideoRenderer(VideoPlayback::WhichVideoChannel channel, VideoPlayback::VideoChannel* videoChannel)
+void AnalyzerGui::setVideoRenderer(VideoPlayback::WhichVideoChannel channel, VideoPlayback::IVideoChannel* videoChannel)
 {
     if (!videoChannel)
     {

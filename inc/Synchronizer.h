@@ -2,8 +2,8 @@
 #define SYNCHRONIZER_H
 
 #include <ISynchronizerActions.h>
+#include <IVideoChannel.h>
 #include <Logger.h>
-#include <VideoChannel.h>
 
 #include <memory>
 
@@ -12,19 +12,12 @@ namespace VideoPlayback
 
 class Synchronizer : public ISynchronizerActions
 {
-    // The SyncManager and its states are friend classes that can manipulate
-    // synchronizer data as needed
-    friend class SyncManager;
-    friend class SynchronizerStateSyncToPlayback;
-    friend class SynchronizerStateSync;
-    friend class SynchronizerStatePlaybackPlaying;
-    friend class SynchronizerStatePlaybackPaused;
-
     public:
-        Synchronizer(std::shared_ptr<VideoChannel> channel_left, std::shared_ptr<VideoChannel> channel_right);
+        Synchronizer(std::shared_ptr<IVideoChannel> channel_left, std::shared_ptr<IVideoChannel> channel_right);
         ~Synchronizer() = default;
         
-        // ISynchronizerActions implementation
+        // ============ ISynchronizerActions implementation ============
+        // Joint video control
         void playVideos() override;
         void pauseVideos() override;
         void setVideosToStartPosition() override;
@@ -36,6 +29,7 @@ class Synchronizer : public ISynchronizerActions
         void stepVideo(WhichVideoChannel channel, int step_size) override;
         VideoPlaybackStatus getVideoPlaybackStatus(WhichVideoChannel channel) const override;
         
+        // Synchronization actions
         void setupVideoSync() override;
         void calculateFramerateRatio() override;
         void clearStartAndEndFrames() override;
@@ -43,13 +37,19 @@ class Synchronizer : public ISynchronizerActions
         void videoPositionUpdate(WhichVideoChannel channel) override;
         void videoFrameUpdate(WhichVideoChannel channel, bool update_joint_slider) override;
         
+        // State accessors
         WhichVideoChannel getVideoPositionUpdateChannel() const override;
         float getNewVideoPosition() const override;
         void setNewVideoPosition(float position) override;
         int getVideoFrameOffset() const override;
 
+        // ============ Other public methods ============
+        // (mainly used for testing)
+        float getFramerateRatio() const { return m_framerate_ratio; }
+
     private:
-        std::shared_ptr<VideoChannel> m_pChannel_left, m_pChannel_right;
+        std::shared_ptr<IVideoChannel> m_pChannel_left;
+        std::shared_ptr<IVideoChannel> m_pChannel_right;
         Logger &m_logger;
 
         // synchronized video offset (left channel position - right channel position)

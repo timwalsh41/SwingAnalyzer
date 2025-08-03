@@ -61,12 +61,12 @@ Made changes.
 
 ### 4. **State Machine Testing Challenges**
 
-<font color='blue'><b>IN PROGRESS...</b></font>
+<font color='green'><b>DONE!</b></font>
 - [x] Main refactor - abstract the synchronizer interface for the state machine
 - [x] Remove observer from Synchronizer? Also would remove Synchronizer::notifyVideoPositionChanged and calls to it from state machine
 - [x] Do we need special handling for SYNCTOPLAYBACK transition in SyncManager::handleEvent?
 - [x] Add tests for other states (PlaybackPaused & PlaybackPlaying were included in refactor)
-- [ ] Update/add tests for Synchronizer
+- [x] Update/add tests for Synchronizer
 - [x] Update markdown docs
 
 **Problem**: The current state machine implementation makes unit testing difficult because:
@@ -79,6 +79,7 @@ Made changes.
 Made changes.
 
 ### 5. **Error Handling Inconsistencies**
+<font color='blue'><b>UP NEXT!</b></font>
 
 **Problem**: Error handling varies across the codebase:
 - Some methods return error codes (`VideoLoadStatus`)

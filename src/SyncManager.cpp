@@ -5,8 +5,8 @@
 
 namespace VideoPlayback
 {
-    SyncManager::SyncManager(std::shared_ptr<VideoChannel> leftChannel, 
-                             std::shared_ptr<VideoChannel> rightChannel) :
+    SyncManager::SyncManager(std::shared_ptr<IVideoChannel> leftChannel, 
+                             std::shared_ptr<IVideoChannel> rightChannel) :
         m_logger(Logger::get()),
         m_channel_left(leftChannel),
         m_channel_right(rightChannel),

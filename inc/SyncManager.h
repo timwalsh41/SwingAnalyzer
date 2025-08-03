@@ -2,6 +2,7 @@
 #define SYNCHMANAGER_H
 
 #include <ISynchronizerState.h>
+#include <IVideoChannel.h>
 #include <IVideoSynchronizationObserver.h>
 #include <Logger.h>
 #include <Synchronizer.h>
@@ -15,8 +16,8 @@ namespace VideoPlayback
 class SyncManager
 {
   public:
-    SyncManager(std::shared_ptr<VideoChannel> leftChannel, 
-                std::shared_ptr<VideoChannel> rightChannel);
+    SyncManager(std::shared_ptr<IVideoChannel> leftChannel, 
+                std::shared_ptr<IVideoChannel> rightChannel);
     ~SyncManager() = default;
     
     // Observer management
@@ -37,14 +38,15 @@ class SyncManager
     // Start the sync manager state machine
     void start();
 
-    VideoChannel* getLeftChannel() { return m_channel_left.get(); }
-    VideoChannel* getRightChannel() { return m_channel_right.get(); }
+    // Access to channels (concrete types for GUI integration)
+    IVideoChannel* getLeftChannel() { return m_channel_left.get(); }
+    IVideoChannel* getRightChannel() { return m_channel_right.get(); }
 
   private:
     // the sync manager owns the video channels; in the constructor we provide the callback
     // for the video frame update to update the slider position
-    std::shared_ptr<VideoPlayback::VideoChannel> m_channel_left;
-    std::shared_ptr<VideoPlayback::VideoChannel> m_channel_right;
+    std::shared_ptr<IVideoChannel> m_channel_left;
+    std::shared_ptr<IVideoChannel> m_channel_right;
 
     // callback for video playback complete, implemented as thread-safe
     void videoPlaybackCompleteCallback(WhichVideoChannel source_channel);

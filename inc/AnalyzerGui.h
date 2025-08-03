@@ -2,6 +2,7 @@
 #define ANALYZERGUI_H
 
 #include <IVideoSynchronizationController.h>
+#include <IVideoChannel.h>
 #include <Logger.h>
 #include <VideoPlaybackTypes.h>
 
@@ -9,11 +10,6 @@
 #include <gtkmm.h>
 
 #include <memory>
-
-// Forward declarations
-namespace VideoPlayback {
-    class VideoChannel;
-}
 
 struct AnalyzerGuiObjects
 {
@@ -67,7 +63,7 @@ class AnalyzerGui
     void updateVideoUnloadedState(VideoPlayback::WhichVideoChannel channel);
 
     // Canvas management for video display
-    void setVideoRenderer(VideoPlayback::WhichVideoChannel channel, VideoPlayback::VideoChannel* videoChannel);
+    void setVideoRenderer(VideoPlayback::WhichVideoChannel channel, VideoPlayback::IVideoChannel* videoChannel);
 
   private:
     // maintain a reference to the GTK builder to access the GUI components
