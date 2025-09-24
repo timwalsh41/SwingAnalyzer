@@ -135,6 +135,13 @@ void AnalyzerGui::setVideoRenderer(VideoPlayback::WhichVideoChannel channel, Vid
             if (m_canvas_left)
             {
                 m_canvas_left->get_root_item()->add_child(videoChannel->GetImage());
+                
+                // TEMPORARY TEST CODE TO ADD AN ANNOTATION ON THE LEFT CANVAS
+                auto rect = Goocanvas::Rect::create(250, 200, 100, 100);
+                rect->property_stroke_color() = "red";
+                rect->property_line_width() = 6;
+                m_canvas_left->get_root_item()->add_child(rect);
+
                 m_canvas_left->show();
                 m_logger.info("Left video renderer set up");
             }
@@ -333,13 +340,6 @@ void AnalyzerGui::setUpGui()
         m_logger.fatal("Failed to find RightVideoBox");
         throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find RightVideoBox");
     }
-
-    // TODO: TEMPORARY TEST CODE TO ADD AN ANNOTATION ON THE LEFT CANVAS
-    auto rect = Goocanvas::Rect::create(250, 400, 100, 100);
-    rect->property_stroke_color() = "red";
-    rect->property_line_width() = 6;
-    m_canvas_left->get_root_item()->add_child(rect);
-    m_canvas_left->show();
 
     // TEMPORARY TEST CODE - SET VIDEO SIZE
     m_canvas_left->set_size_request(400, 600);

@@ -30,5 +30,5 @@ cd build
 # Configure the project with CMake
 cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
 
-# Build the project
-time make
+# Build only the swing_analyzer target
+time make swing_analyzer

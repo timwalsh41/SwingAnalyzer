@@ -89,7 +89,7 @@ else
         time ./${UNIT_TEST_EXECUTABLE} ${GTEST_FILTER} || true
     else
         echo "Unit test executable '${UNIT_TEST_EXECUTABLE}' not found or not executable."
-        echo "If using CTest, you can run: ctest --output-on-failure"
+        echo "Try to run: ctest --output-on-failure"
     fi
 fi
 
