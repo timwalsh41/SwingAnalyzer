@@ -16,8 +16,8 @@ void AnalyzerController::initialize()
     m_engine->start();
 
     // TODO: TEMPORARY TEST CODE TO LOAD AND PLAY VIDEO CHANNELS
-    m_engine->loadVideo(VideoPlayback::WhichVideoChannel::LEFT_CHANNEL, "/home/tim/Downloads/Golf/2025-05-27 4i DTL.mp4");
-    m_engine->loadVideo(VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL, "/home/tim/Downloads/Golf/2025-05-27 4i FO.mp4");
+    m_engine->loadVideo(VideoPlayback::WhichVideoChannel::LEFT_CHANNEL, "/home/tim/Downloads/Golf/2025-11-09 6i FO.mp4");
+    m_engine->loadVideo(VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL, "/home/tim/Downloads/Golf/2025-11-16 6i FO.mp4");
     
     m_logger.info("AnalyzerController initialized");
 }

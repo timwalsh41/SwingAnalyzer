@@ -75,7 +75,22 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string& path)
         return VIDEO_LOAD_ERROR;
     }
     
-    // Attempt to load the video first
+    // If already loaded, unload the current video first
+    if (m_state_machine->isLoaded())
+    {
+        m_logger.info("Unloading existing video before loading new one");
+        if (m_video_decoder->unloadVideo())
+        {
+            m_state_machine->transition(VideoChannelEvent::UNLOAD_VIDEO);
+        }
+        else
+        {
+            m_logger.error("Failed to unload existing video");
+            return VIDEO_LOAD_ERROR;
+        }
+    }
+    
+    // Attempt to load the video
     VideoLoadStatus status = m_video_decoder->loadVideo(path);
     if (status != VIDEO_LOAD_SUCCESS)
     {
@@ -83,7 +98,7 @@ VideoLoadStatus VideoChannel::loadVideo(const std::string& path)
         return status;
     }
     
-    // Only transition state if video loading succeeded
+    // Transition state after successful load
     if (!m_state_machine->transition(VideoChannelEvent::LOAD_VIDEO))
     {
         // This should not happen since we already checked isValidTransition above
@@ -543,7 +558,8 @@ void VideoChannel::updateVideoSize()
     if (!isLoaded()) return;
     
     VideoProperties props = m_video_decoder->getProperties();
-    setVideoSize(800, 800); // Default size, can be adjusted later
+    // setVideoSize(800, 800); // Default size, can be adjusted later
+    setVideoSize(props.width/2, props.height/2);
 }
 
 } // namespace VideoPlayback

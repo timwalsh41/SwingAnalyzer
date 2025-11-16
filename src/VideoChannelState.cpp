@@ -72,6 +72,7 @@ bool VideoChannelStateMachine::isValidTransition(VideoChannelEvent event) const
 
         case VideoChannelState::STOPPED:
             return event == VideoChannelEvent::PLAY ||
+                   event == VideoChannelEvent::LOAD_VIDEO ||
                    event == VideoChannelEvent::UNLOAD_VIDEO ||
                    event == VideoChannelEvent::STEP_FRAME ||
                    event == VideoChannelEvent::SEEK_FRAME ||

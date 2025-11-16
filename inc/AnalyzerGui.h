@@ -10,6 +10,8 @@
 #include <gtkmm.h>
 
 #include <memory>
+#include <optional>
+#include <string>
 
 struct AnalyzerGuiObjects
 {
@@ -91,6 +93,8 @@ class AnalyzerGui
     void loadGuiObjects();
     void setUpGui();
     void connectSignals();
+    
+    std::optional<std::string> showVideoFileDialog(const std::string& title);
     
     // Internal signal callbacks
     void onLoadLeftVideo();

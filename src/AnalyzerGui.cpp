@@ -2,6 +2,9 @@
 #include <IVideoChannel.h>
 #include <VideoPlaybackConstants.h>
 
+#include <gtkmm/filechooserdialog.h>
+#include <gtkmm/filefilter.h>
+
 #include <iomanip>
 #include <sstream>
 
@@ -162,29 +165,75 @@ void AnalyzerGui::setVideoRenderer(VideoPlayback::WhichVideoChannel channel, Vid
     }
 }
 
+std::optional<std::string> AnalyzerGui::showVideoFileDialog(const std::string& title)
+{
+    Gtk::FileChooserDialog dialog(title, Gtk::FILE_CHOOSER_ACTION_OPEN);
+    
+    dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
+    dialog.add_button("_Open", Gtk::RESPONSE_OK);
+    
+    const std::string DEFAULT_VIDEO_DIR = "/home/tim/Downloads/Golf";
+    dialog.set_current_folder(DEFAULT_VIDEO_DIR);
+    
+    auto video_filter = Gtk::FileFilter::create();
+    video_filter->set_name("Video Files");
+    video_filter->add_pattern("*.mp4");
+    video_filter->add_pattern("*.avi");
+    video_filter->add_pattern("*.mov");
+    video_filter->add_pattern("*.mkv");
+    dialog.add_filter(video_filter);
+    
+    auto all_filter = Gtk::FileFilter::create();
+    all_filter->set_name("All Files");
+    all_filter->add_pattern("*");
+    dialog.add_filter(all_filter);
+    
+    int result = dialog.run();
+    
+    if (result == Gtk::RESPONSE_OK)
+    {
+        std::string filename = dialog.get_filename();
+        m_logger.info("File selected: %s", filename.c_str());
+        return filename;
+    }
+    else
+    {
+        m_logger.info("File dialog cancelled");
+        return std::nullopt;
+    }
+}
+
 void AnalyzerGui::onLoadLeftVideo()
 {
-    // TODO: load video via dialog box
     m_logger.info("Load left video requested");
+    
+    auto video_path = showVideoFileDialog("Select Left Video");
+    if (!video_path.has_value())
+    {
+        m_logger.info("No file selected for left video");
+        return;
+    }
     
     if (m_controller)
     {
-        // For now, we'll use a hardcoded path - in production this would be a file dialog
-        m_controller->loadVideo(VideoPlayback::WhichVideoChannel::LEFT_CHANNEL, 
-                               "/home/tim/Downloads/Golf/2025-05-27 4i DTL.mp4");
+        m_controller->loadVideo(VideoPlayback::WhichVideoChannel::LEFT_CHANNEL, video_path.value());
     }
 }
 
 void AnalyzerGui::onLoadRightVideo()
 {
-    // TODO: load video via dialog box
     m_logger.info("Load right video requested");
+    
+    auto video_path = showVideoFileDialog("Select Right Video");
+    if (!video_path.has_value())
+    {
+        m_logger.info("No file selected for right video");
+        return;
+    }
     
     if (m_controller)
     {
-        // For now, we'll use a hardcoded path - in production this would be a file dialog
-        m_controller->loadVideo(VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL, 
-                               "/home/tim/Downloads/Golf/2025-05-27 4i FO.mp4");
+        m_controller->loadVideo(VideoPlayback::WhichVideoChannel::RIGHT_CHANNEL, video_path.value());
     }
 }
 
@@ -341,9 +390,9 @@ void AnalyzerGui::setUpGui()
         throw Gtk::BuilderError(Gtk::BuilderError::INVALID_ID, "Failed to find RightVideoBox");
     }
 
-    // TEMPORARY TEST CODE - SET VIDEO SIZE
-    m_canvas_left->set_size_request(400, 600);
-    m_canvas_right->set_size_request(400, 600);
+    // TODO: TEMPORARY TEST CODE - SET VIDEO SIZE
+    m_canvas_left->set_size_request(500, 1000);
+    m_canvas_right->set_size_request(500, 1000);
 
     auto left_adjustment = Gtk::Adjustment::create(0., 0., 1., 0.025, 0.1, 0.);
     m_guiObjects.scrollVideoLeft->set_adjustment(left_adjustment);
