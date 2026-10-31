@@ -17,6 +17,38 @@ Use cases
 - Reference vs. current: compare against a model swing or previous best
 - Club/lie/ball position experiments: assess impact across variations
 
+Building
+
+The project uses CMake and is built via the provided shell scripts from the repository root.
+
+Prerequisites
+- CMake and a C++ toolchain (make, g++/clang++)
+- OpenCV, GTK/Goocanvas and Google Test available on the system
+- `lcov` and `genhtml` (optional, only needed for coverage reports)
+
+Main application
+
+Build the `swing_analyzer` target using `build.sh`:
+
+```bash
+./build.sh                # Debug build (default)
+./build.sh -b Release     # Release build
+```
+
+The script creates a `build/` directory if needed, runs the CMake configuration with the chosen build type, and builds only the `swing_analyzer` target.
+
+Unit tests
+
+Build and run the Google Test suite using `buildAndRunUnitTests.sh`:
+
+```bash
+./buildAndRunUnitTests.sh                          # build & run all unit tests
+./buildAndRunUnitTests.sh -t "SynchronizerState*"   # run tests matching a filter
+./buildAndRunUnitTests.sh -m coverage              # build & run with coverage, generate report
+```
+
+The script configures a Debug build, builds the `unit_tests` target, and runs the test executable. Use `-t` to pass a `--gtest_filter` expression (`*` works as a wildcard) and `-m coverage` to build the `unit_tests_coverage` target instead and generate an HTML coverage report in `build/coverage/index.html`.
+
 Requirements
 - Functional
     - Load videos per channel and report load status
