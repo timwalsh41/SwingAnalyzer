@@ -5,6 +5,7 @@
 #include <ctime>
 #include <fstream>
 #include <iomanip>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
